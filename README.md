@@ -22,3 +22,5 @@ Using the provided SDK and the following configurations, a connection with the S
 Like any CMake project, after configuring the project by building _CMakeLists.txt_, and building the project by building _Makefile_, an executable for each C++ source file will be created in the specified build path, _.../out/build_ in this project.
 
 Including a desktop ethernet switch made the source code files more functional and convenient as it solved some connectivity issues.  
+
+An additional source file was added to the examples folder. This file can extract the x,y,z values of each generated point respectively and save them in a _.txt_ file. The values are then to be used to create a point cloud, and eventually a 3D mesh.
