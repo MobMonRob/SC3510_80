@@ -9,7 +9,7 @@ find_package(MEGCPP 1.6.2 REQUIRED)
 
 set(LIBM_LIBRARIES m)
 link_libraries(pthread)
-link_directories(../../Libs)
+link_directories(../Libs)
 
 get_cmake_property(_variableNames VARIABLES)
 list (SORT _variableNames)
@@ -18,7 +18,7 @@ foreach (_variableName ${_variableNames})
 endforeach()
 
 set_property(DIRECTORY PROPERTY USE_FOLDERS ON)
-foreach(example DeviceInfo FindDevices ParameterList ReflectControl2dMeasurement ReflectControl3dMeasurement ReflectControl3dMeasurementSeries ReflectControlCameraLive SurfaceControl2dMeasurement SurfaceControl3dMeasurement SurfaceControl3dMeasurementSeries SurfaceControlCameraLive ScanControl3dMeasurement ScanControlCameraLive pcd_gen)
+foreach(example pcd_gen)
 	add_executable(MEGCPP_Example_${example} src/${example}.cpp)
 	target_link_libraries(MEGCPP_Example_${example} 3D-SensorSDK::MEGCPP)
 	set_target_properties(MEGCPP_Example_${example} PROPERTIES
