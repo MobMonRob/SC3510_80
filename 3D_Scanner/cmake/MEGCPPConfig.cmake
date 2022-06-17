@@ -54,7 +54,7 @@ endif()
 add_library(3D-SensorSDK::MEGCPP SHARED IMPORTED)
 
 set_target_properties(3D-SensorSDK::MEGCPP PROPERTIES
-  INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/3D-Sensor-SDK-1.6.2/C++/include;${_IMPORT_PREFIX}/3D-Sensor-SDK-1.6.2/C/include;${_IMPORT_PREFIX}/3D-Sensor-SDK-1.6.2/MEDataTypes/include;${_IMPORT_PREFIX}/3D-Sensor-SDK-1.6.2/MEPointCloud/include"
+  INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/3D_Scanner/include;${_IMPORT_PREFIX}/3D_Scanner/include;${_IMPORT_PREFIX}/3D_Scanner/MEDataTypes/include;${_IMPORT_PREFIX}/3D_Scanner/MEPointCloud/include"
   #INTERFACE_LINK_LIBRARIES "BVUtils::medatatypess;BVUtils::mepointclouds"
 )
 
