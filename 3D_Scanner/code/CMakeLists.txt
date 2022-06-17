@@ -19,14 +19,14 @@ endforeach()
 
 set_property(DIRECTORY PROPERTY USE_FOLDERS ON)
 foreach(example pcd_gen)
-	add_executable(MEGCPP_Example_${example} src/${example}.cpp)
-	target_link_libraries(MEGCPP_Example_${example} 3D-SensorSDK::MEGCPP)
-	set_target_properties(MEGCPP_Example_${example} PROPERTIES
+	add_executable(MEGCPP_${example} src/${example}.cpp)
+	target_link_libraries(MEGCPP_${example} 3D-SensorSDK::MEGCPP)
+	set_target_properties(MEGCPP_${example} PROPERTIES
 		DEBUG_POSTFIX "d"
-		FOLDER "MEGCPP_Examples"
+		FOLDER "MEGCPP"
 		OUTPUT_NAME ${example})
-	install(TARGETS MEGCPP_Example_${example} RUNTIME DESTINATION 3D-SensorSDK/MEGCPP_Examples/${example})
+	install(TARGETS MEGCPP_${example} RUNTIME DESTINATION 3D-SensorSDK/MEGCPP/${example})
 	if(MSVC)
-		install(FILES $<TARGET_PDB_FILE:MEGCPP_Example_${example}> DESTINATION 3D-SensorSDK/MEGCPP_Examples/${example})
+		install(FILES $<TARGET_PDB_FILE:MEGCPP_${example}> DESTINATION 3D-SensorSDK/MEGCPP/${example})
 	endif()
 endforeach()
