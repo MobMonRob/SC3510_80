@@ -1,7 +1,7 @@
 **Point Clouds Generation:**
 
 - Program functionality:
-pcd_gen.cpp is used to generate “.pcd” point cloud files from the scans taken using the SurfaceControl XXXX. The program mainly calls 6 functions in order to achieve the following:
+pcd_gen.cpp is used to generate “.pcd” point cloud files from the scans taken using the SurfaceControl 3510_80. The program mainly calls 6 functions in order to achieve the following:
 
 1) Find the SurfaceControl scanner.
 2) Connect to the scanner.
