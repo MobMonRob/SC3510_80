@@ -3,12 +3,12 @@
 - Program functionality:
 pcd_gen.cpp is used to generate “.pcd” point cloud files from the scans taken using the SurfaceControl XXXX. The program mainly calls 6 functions in order to achieve the following:
 
-Find the SurfaceControl scanner.
-Connect to the scanner.
-Set some scanning parameters
-Setup the data transfer between the scanner and the PC.
-Trigger the scanner to take single-shot scans.
-Process the scanned shots by creating point clouds and generating the “.pcd” files.
+1) Find the SurfaceControl scanner.
+2) Connect to the scanner.
+3) Set some scanning parameters
+4) Setup the data transfer between the scanner and the PC.
+5) Trigger the scanner to take single-shot scans.
+6) Process the scanned shots by creating point clouds and generating the “.pcd” files.
 
 - PointClouds properties:
 The generated PointClouds are unorganized, meaning their height = 1 and width = number of points. The scanner generates XYZ points without any information about color, intensity, or depth.
