@@ -14,13 +14,8 @@ A connection was successfully established with the 3Dinspect software, and the f
 
 
 **Linux Set-up:**
-Using the provided SDK and the following configurations, a connection with the SC3D was established. The compilation of the provided SDK was done with the help of CMake tools. The configurations required were:
+In order to establish a connection with the surfaceControl_3D, the network card needs to be configured as above (in Windows).
 
-  1) Specify the path for the library that includes all necessary header/binary files. (Use the -D prefix with cmake command to refer to the _C++/cmake_        directory)
-  2) Specify the path for the two variables _LD_LIBRARY_PATH_ and _GENICAM_ROOT_V3_1_. (Use the commands written in env.sh to refer to the _/Libs_              directory)
+The configurations could be set up using the -ethtool- tool command through the terminal.
 
-Like any CMake project, after configuring the project by building _CMakeLists.txt_, and building the project by building _Makefile_, an executable for each C++ source file will be created in the specified build path, _.../out/build_ in this project.
-
-Including a desktop ethernet switch made the source code files more functional and convenient as it solved some connectivity issues.  
-
-An additional source file was added to the examples folder. This file can extract the x,y,z values of each generated point respectively and save them in a _.txt_ file. The values are then to be used to create a point cloud, and eventually a 3D mesh.
+The _3D_Scanner_ directory include a soruce file and its dependencies to operate the SC3D and generate .pcd file of each scan. The _3D_icp_ directory aligns two clouds together. More details about the functionality and instructions are included in the README.txt file of each directory respectively.
