@@ -31,48 +31,48 @@ Both clouds are then cropped on the x-axis using PassThrough to result in only t
 The source clouds (original & overlap) are lastly shifted by the value of the sensor displacement.
 In order to shift the clouds accurately, it is planned to get the sensor displacement value later through other means, for example, through trackers or through robot arm odometry information.
 
-__**findNormals functions:**__
-In order to generate stable normals, we need to identify a __viewpoint__ for the normals to point to.
-Additionally, a space-partitioning data structure (__kd-tree object__) is essential to apply the search.
-The search area can be identified with one of 2 methods, namely, __KSearch__ and __RadiusSearch__.
+_**findNormals functions:**_
+In order to generate stable normals, we need to identify a _viewpoint_ for the normals to point to.
+Additionally, a space-partitioning data structure (_kd-tree object_) is essential to apply the search.
+The search area can be identified with one of 2 methods, namely, _KSearch_ and _RadiusSearch_.
 They cannot be used at the same time.
 
-- __Viewpoint__: is considered to be the centroid of the point cloud.
+- _Viewpoint_: is considered to be the centroid of the point cloud.
 (edit): shifting the z-component to 100 significantly increased the alignment of the normals, since the z-centroid was BETWEEN the points.
 
-- __KSearch__: the classic normal estimation method, estimates a normal vector at a
+- _KSearch_: the classic normal estimation method, estimates a normal vector at a
 point by collecting its k nearest neighbors (k-NN) and fitting a plane on them.
 The trade-off here is that smaller k-values are better for estimating the normals inside curves, and higher values are optimal for flat surfaces.
 The best experimental value for this application was 8.
 
-- __RadiusSearch__: is the radius of the sphere used as the “search” area. RadiusSearch in this application is not optimal since there is various points-concentration in different regions.
+- _RadiusSearch_: is the radius of the sphere used as the “search” area. RadiusSearch in this application is not optimal since there is various points-concentration in different regions.
 
-__**normalSpaceSample**__:
-Downsampling the point clouds (i.e overlapped regions) is a crucial step to achieving optimal processing effort and time. Normal-Space-Sampling is a method that creates a __number of samples__ by randomly picking a point from __bins__ that contain multiple points.  
+_**normalSpaceSample**_:
+Downsampling the point clouds (i.e overlapped regions) is a crucial step to achieving optimal processing effort and time. Normal-Space-Sampling is a method that creates a _number of samples_ by randomly picking a point from _bins_ that contain multiple points.  
 
-- __setSample__: specifies the number of indices to be sampled.
-- __setSeed__: specifies the seed to be used by the random function that picks the points from the bins.
-- __setBins__: (x, y, z) set the number of bins (buckets) to be considered when picking the corresponding indices.
+- _setSample_: specifies the number of indices to be sampled.
+- _setSeed_: specifies the seed to be used by the random function that picks the points from the bins.
+- _setBins_: (x, y, z) set the number of bins (buckets) to be considered when picking the corresponding indices.
 
-__**findNormalCorrespondences**__:
+_**findNormalCorrespondences**_:
 Finding correspondences is the process of matching each point in a cloud with its respective pair in the other cloud. It is the most consequential process on the results of the whole registration. 
 Since the majority of the scanned surface is smooth and straight, the normal-shooting matching method has a high potential in aligning the two clouds successfully and with minimum iterations (i.e only one), at least on the z-direction. 
-Here, two parameters need to be specified to carry out the process. Namely, the __k-factor__ and the __maximum distance__.
+Here, two parameters need to be specified to carry out the process. Namely, the _k-factor_ and the _maximum distance_.
 
-- __K-factor__: specifies the number of nearest neighbor points to be considered in the target cloud when estimating the target normals, this is set to 8 to match the k-factor of the source normals.
-- __Maximum distance__: a threshold value that limits the distance between the point pairs, =10.
+- _K-factor_: specifies the number of nearest neighbor points to be considered in the target cloud when estimating the target normals, this is set to 8 to match the k-factor of the source normals.
+- _Maximum distance_: a threshold value that limits the distance between the point pairs, =10.
 
-__**findIndCorrespondences**__:
+_**findIndCorrespondences**_:
 In this variant, the function takes in 2 additional parameters for the indices of each cloud to be considered in the process, allowing us to take only certain points into consideration. These could be chosen based on other filtering criteria like normal-angle thresholding or others. 
 
-__**rejectCorrespondences**__:
+_**rejectCorrespondences**_:
 Using the Surface-Nomral correspondence rejector we can make sure that the angle difference between the normal vectors of the point pairs does not exceed 5 degrees. Therefore, filtering out those relatively false point pairs.  
 
-__**findTF**__:
+_**findTF**_:
 This function uses the Singular-Value Decomposition factorization to return a transfer function that estimates the rigid transformation needed to minimize the distance between the calculated correspondences of the two point-clouds. The distance here is minimized by means of translational and/or rotational motion. 
 
-__**filterByAngle**__:
+_**filterByAngle**_:
 This function compares the normal vectors of the points with the surface normal vector of the cloud (currently a vector pointing straight in the z-direction) by calculating the angle between them. Therefore, allowing the identification of edges and curved areas in the point cloud. This comes in handy when aligning the clouds in the x-direction since only the curved areas are of significance. 
 
-__**cloudsViewer**__:
+_**cloudsViewer**_:
 This is the visualizing function that is called whenever we want to view the clouds. It also views the surface normal vector specified in the filterByAngle, as well as the correspondences calculated in each step. The source cloud is viewed in green and the target cloud in red.
