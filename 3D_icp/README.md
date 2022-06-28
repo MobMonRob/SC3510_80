@@ -16,4 +16,4 @@ Note: Steps 3-5 are applied to the overlapped area to minimize computational eff
 After downloading the 3D_icp directory, follow these steps:
 1) Run the cmake command with the source path set to where the cmake file is, and the build path set to out/build.
 2) Add the 2 “.pcd” files to be aligned to the out/build directory, or use the example files provided.
-3) Call the executable using Terminal with specifying the names of the 2 “.pcd” files to be aligned. (Example: ./diy_icp example1.pcd example2.pcd).
+3) Call the executable using Terminal with specifying the names of the 2 “.pcd” files to be aligned. (Example: ./diy_icp pack1.pcd pack2.pcd).
