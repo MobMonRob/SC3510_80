@@ -38,7 +38,8 @@ Downsampling the point clouds (i.e overlapped regions) is a crucial step to achi
 - _setSeed_: specifies the seed to be used by the random function that picks the points from the bins.
 - _setBins_: (x, y, z) set the number of bins (buckets) to be considered when picking the corresponding indices.
 
-**MATCHERS:**
+**//MATCHERS:**
+
 _**findNormalCorrespondences**_:
 Finding correspondences is the process of matching each point in a cloud with its respective pair in the other cloud. It is the most consequential process on the results of the whole registration. 
 Since the majority of the scanned surface is smooth and straight, the normal-shooting matching method has a high potential in aligning the two clouds successfully and with minimum iterations (i.e only one), at least on the z-direction. 
@@ -50,7 +51,8 @@ Here, two parameters need to be specified to carry out the process. Namely, the 
 _**findIndNormalCorrespondences**_:
 In this variant, the function takes in 2 additional parameters for the indices of each cloud to be considered in the process, allowing us to take only certain points into consideration. These could be chosen based on other filtering criteria like normal-angle thresholding or others. 
 
-**REJECTORS:**
+**//REJECTORS:**
+
 _**normalCorrRejector**_:
 Using the Surface-Nomral correspondence rejector we can make sure that the angle difference between the normal vectors of the point pairs does not exceed 5 degrees. Therefore, filtering out those relatively false point pairs.  
 
@@ -70,7 +72,8 @@ When multiple points from the source cloud pair with the same point in the targe
 _**distanceRejector:**_
 this function ignores any correspondece that have a distacne above the specified threshod value.
 
-**FEATURE EXTRACTORS:**
+**//FEATURE EXTRACTORS:**
+
 _**findNormals:**_
 In order to generate stable normals, we need to identify a _viewpoint_ for the normals to point to.
 Additionally, a space-partitioning data structure (_kd-tree object_) is essential to apply the search.
@@ -81,6 +84,7 @@ _**filterByAngle**_:
 This function compares the normal vectors of the points with the surface normal vector of the cloud (currently a vector pointing straight in the z-direction) by calculating the angle between them. Therefore, allowing the identification of edges and curved areas in the point cloud. This comes in handy when aligning the clouds in the x-direction since only the curved areas are of significance. 
 
 //**TOOLS:**
+
 _**findTF**_:
 This function uses the Singular-Value Decomposition factorization to return a transfer function that estimates the rigid transformation needed to minimize the distance between the calculated correspondences of the two point-clouds. The distance here is minimized by means of translational and/or rotational motion. 
 
