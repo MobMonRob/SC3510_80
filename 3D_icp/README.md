@@ -20,11 +20,11 @@ After downloading the 3D_icp directory, follow these steps:
 
 **Functions Definition:**
 
-__**loadFile:**__
+_**loadFile:**_
 Loads a .pcd file into a point cloud and prints out a feedback string on whether the file was loaded successfully or not.
 The function uses the loadPolygonFile and then stores the data from the mesh into the cloud object. Lastly, it removes any NaN points from the cloud.
 
-__**initAlign:**__
+_**initAlign:**_
 This function applies the required initial alignment by ICP and crops the point clouds into two chunks in order to fasten processing by ‘focusing’ on the overlapped regions of the clouds.
 The source cloud is shifted by 1 on the z-axis in order to have a clear initial distance to work with.
 Both clouds are then cropped on the x-axis using PassThrough to result in only the overlapped regions (overlap-source, -target).
