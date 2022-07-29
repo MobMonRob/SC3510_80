@@ -12,8 +12,8 @@
 #include <pcl/filters/passthrough.h>
 #include <pcl/filters/normal_space.h>
 #include <pcl/visualization/cloud_viewer.h>
-#include <pcl/features/principal_curvatures.h>
 #include <pcl/registration/transformation_validation.h>
+#include <pcl/features/principal_curvatures.h>
 #include <pcl/registration/correspondence_rejection_distance.h>
 #include <pcl/registration/transformation_validation_euclidean.h>
 #include <pcl/registration/correspondence_rejection_one_to_one.h>
@@ -54,11 +54,13 @@ void initAlign( pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud_source, pcl::PointClo
 
     // constructing the new corresponding pose transfer function
     Eigen::Matrix4f tf;
-    tf <<  1, 0, 0, x,
-           0, 1, 0, y,
-           0, 0, 1, z,
-           0, 0, 0, 1
+    tf <<   1, 0, 0, x,
+            0, 1, 0, y,
+            0, 0, 1, z,
+            0, 0, 0, 1
     ;
+    cout << "this is the pre-aligning matrix: \n" << tf << endl;
+
     // calculating extreme points of the clouds
     pcl::PointXYZ tmin;
     pcl::PointXYZ tmax;
@@ -71,11 +73,11 @@ void initAlign( pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud_source, pcl::PointClo
     pcl::PassThrough<PointXYZ> passer;
     passer.setInputCloud( cloud_target );
     passer.setFilterFieldName( "y" );
-    passer.setFilterLimits( ( tmin.y ) , ( tmax.y - abs(y) ) );
+    passer.setFilterLimits( ( tmin.y + abs(y) ) , ( tmax.y ) );
     passer.pcl::Filter<PointXYZ>::filter( *overlap_target );
     passer.setInputCloud( cloud_source );
     passer.setFilterFieldName( "y" );
-    passer.setFilterLimits( ( smin.y + abs(y) ) , ( smax.y ) );
+    passer.setFilterLimits( ( smin.y ) , ( smax.y - abs(y) ) );
     passer.pcl::Filter<PointXYZ>::filter( *overlap_source );
     
     // shift on x-axis
@@ -236,7 +238,7 @@ void findNormals( pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud_source, pcl::PointC
     pcl::console::print ( pcl::console::L_INFO, "Source normals calculated, %d normals were found.\n", (int)source_normals->size() );
 }
 
-pcl::IndicesPtr filterByAngle( pcl::PointCloud<pcl::PointNormal>::Ptr &cloud_normals, const Eigen::Vector3f requiredDirection, float maxAngleDeg, char LH )
+pcl::IndicesPtr filterByAngle( pcl::PointCloud<pcl::PointNormal>::Ptr &cloud_normals, const Eigen::Vector3f requiredDirection, float AngleDeg, char LH )
 {
     pcl::IndicesPtr indices ( new std::vector <int> );
     float angle, lenSq1, dot;
@@ -247,13 +249,16 @@ pcl::IndicesPtr filterByAngle( pcl::PointCloud<pcl::PointNormal>::Ptr &cloud_nor
         lenSq1 = sqrt(pow(cloud_normals->points[i].normal_x, 2.0f) + pow(cloud_normals->points[i].normal_y, 2.0f) + pow(cloud_normals->points[i].normal_z, 2.0f));
         angle = pcl::rad2deg( acos(dot/lenSq1) );
 
-        if( LH == 'L') { if ( angle <= maxAngleDeg ) { indices->push_back(i); } }
-        else if( LH == 'H') { if ( angle >= maxAngleDeg ) { indices->push_back(i); } }
+        if( LH == 'L') { if ( angle <= AngleDeg ) { indices->push_back(i); } }
+
+        else if( LH == 'H') { if ( angle >= AngleDeg ) { indices->push_back(i); } }
         
     }
+
+    if( LH == 'L') { cout << indices->size() << " points are below " << AngleDeg << "°." << endl; }
+
+    else if( LH == 'H') { cout << indices->size() << " points are over " << AngleDeg << "°." << endl; }
     
-    
-    cout << indices->size() << " points are above " << maxAngleDeg << "°." << endl;
     return indices;
 }
 
@@ -317,6 +322,21 @@ void cloudsViewer( pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud_source,
     viewer->spin();
 }
 
+void saveFile( string file_name, pcl::PointCloud<pcl::PointXYZ>::Ptr ds_cloud )
+{
+    int counter = 1;
+    ofstream out(file_name);
+    out << "# .PCD v.7 - Point Cloud Data file\n" << "VERSION .7\n" << "FIELDS x y z\n" << "SIZE 4 4 4\n" << "TYPE F F F\n" << "COUNT 1 1 1\n"
+    << "WIDTH 1\n" << "HEIGHT " << ds_cloud->points.size() << "\nVIEWPOINT 0 0 0 1 0 0 0\n" << "POINTS " << (ds_cloud->points.size()) << "\nDATA ascii\n";
+    for(int i = 0; i < ds_cloud->points.size(); i++) {
+        out << ds_cloud->points[i].x << " " 
+        << ds_cloud->points[i].y << " "
+        << ds_cloud->points[i].z << endl;
+    }
+    out.close();
+    cout << "The clouds were merged and saved in " << file_name << " successfully." << endl;
+}
+
 main( int argc, char **argv ) 
 {   
     // Variable to store the estimated TF.
@@ -332,6 +352,10 @@ main( int argc, char **argv )
     straight_vec(1) = 0;
     straight_vec(2) = 1;
 
+    // sensor shifting values:
+    float x, z = 0;
+    float y = 121.47;
+
     // create pointer valids for source and target clouds, with all other variable dependencies.
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_source ( new pcl::PointCloud<pcl::PointXYZ> ); // point cloud
     pcl::PointCloud<pcl::PointXYZ>::Ptr overlap_source ( new pcl::PointCloud<pcl::PointXYZ> ); // overlapped region
@@ -339,8 +363,6 @@ main( int argc, char **argv )
     pcl::PointCloud<pcl::PointXYZ>::Ptr nss_overlap_source ( new pcl::PointCloud<pcl::PointXYZ> ); // sampled cloud
     pcl::PointCloud<pcl::PrincipalCurvatures>::Ptr source_curves ( new pcl::PointCloud<PrincipalCurvatures> ); // cloud curvatures
     pcl::IndicesPtr source_ind ( new std::vector <int> ); // point indices of curvy points
-    pcl::PointCloud<pcl::PointXYZ>::Ptr grooves_source ( new pcl::PointCloud<pcl::PointXYZ> ); // point cloud of the back grooves
-    pcl::PointCloud<pcl::ShapeContext1980>::Ptr source_features ( new pcl::PointCloud<ShapeContext1980> ); // cloud features
 
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target ( new pcl::PointCloud<pcl::PointXYZ> );
     pcl::PointCloud<pcl::PointXYZ>::Ptr overlap_target ( new pcl::PointCloud<pcl::PointXYZ> );
@@ -348,8 +370,8 @@ main( int argc, char **argv )
     pcl::PointCloud<pcl::PointXYZ>::Ptr nss_overlap_target ( new pcl::PointCloud<pcl::PointXYZ> );
     pcl::PointCloud<pcl::PrincipalCurvatures>::Ptr target_curves ( new pcl::PointCloud<PrincipalCurvatures> );
     pcl::IndicesPtr target_ind ( new std::vector <int> );
-    pcl::PointCloud<pcl::PointXYZ>::Ptr grooves_target ( new pcl::PointCloud<pcl::PointXYZ> );
-    pcl::PointCloud<pcl::ShapeContext1980>::Ptr target_features ( new pcl::PointCloud<ShapeContext1980> );
+
+    pcl::PointCloud<pcl::PointXYZ>::Ptr sum_cloud ( new pcl::PointCloud<pcl::PointXYZ> );
 
     // load source and target files.
     cout << "Loading pcd files...\n";
@@ -357,11 +379,12 @@ main( int argc, char **argv )
     loadFile ( argv[2], *cloud_source );
 
     // crop and pre-align point clouds
-    initAlign( cloud_source, cloud_target, overlap_source, overlap_target, 0, -180, 0 ); // The last three value are for the x, y, z shift values, respectively.
+    initAlign( cloud_source, cloud_target, overlap_source, overlap_target, x, y, z ); // The last three value are for the x, y, z shift values, respectively.
     
     // calculate normals and downsample the original clouds.
     findNormals ( overlap_source, source_normals );
     findNormals ( overlap_target, target_normals );
+
     normalSpaceSample ( overlap_source, nss_overlap_source, source_normals );
     normalSpaceSample ( overlap_target, nss_overlap_target, target_normals );
 
@@ -377,8 +400,8 @@ main( int argc, char **argv )
     pcl::IndicesPtr rej_ids ( new std::vector <int> );
 
     // filters out the points of the flat regions
-    source_ind = filterByAngle( source_normals, straight_vec, 0, 'L' );
-    target_ind = filterByAngle( target_normals, straight_vec, 0, 'L' );
+    source_ind = filterByAngle( source_normals, straight_vec, 10, 'L' );
+    target_ind = filterByAngle( target_normals, straight_vec, 10, 'L' );
 
     findIndNormalCorrespondences( nss_overlap_source, source_normals, nss_overlap_target, target_normals, corr_list, source_ind, target_ind );
     normalCorrRejector( corr_list, corr_list_out, source_normals, target_normals, rej_ids, 5 ); // normal-angle rejector is used to assure that only correspondences resulting in vertical shifitng of source are considered. 
@@ -419,7 +442,34 @@ main( int argc, char **argv )
         cout << "Confidence score: " << conf_score << endl; // the clouds seemed to be merged when the confidence score readched 0.2
     } 
 
-    cloudsViewer( cloud_source, cloud_target );
+    int total_size = cloud_source->size() + cloud_target->size();
+    sum_cloud->resize( total_size );
+
+    pcl::PointXYZ min;
+    pcl::PointXYZ max;
+    getMinMax3D( *cloud_source, min, max );
+    pcl::PassThrough<PointXYZ> passer;
+    passer.setInputCloud( cloud_source );
+    passer.setFilterFieldName( "y" );
+    passer.setFilterLimits( ( max.y - abs(y) ) , ( max.y ) );
+    passer.pcl::Filter<PointXYZ>::filter( *cloud_source );
+
+    for ( int i = 0; i < cloud_source->size(); i++)
+    {
+        sum_cloud->points[i] = cloud_source->points[i];
+    }
+    for ( int i = 0; i < cloud_target->size(); i++)
+    {
+        sum_cloud->points[i+cloud_source->size()-1] = cloud_target->points[i];
+    }
+
+    if (argc > 3) 
+    { 
+        string file_name = argv[3];
+        saveFile( file_name, sum_cloud );
+    }
+
+    cloudsViewer( cloud_source, sum_cloud );
 
     return 0;
 }
