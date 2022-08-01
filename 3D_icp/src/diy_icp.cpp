@@ -337,6 +337,32 @@ void saveFile( string file_name, pcl::PointCloud<pcl::PointXYZ>::Ptr ds_cloud )
     cout << "The clouds were merged and saved in " << file_name << " successfully." << endl;
 }
 
+void saveCombined( pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud_source, pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud_target, pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud_sum, string file_name, float y )
+{
+    int total_size = cloud_source->size() + cloud_target->size();
+    cloud_sum->resize( total_size );
+
+    pcl::PointXYZ min;
+    pcl::PointXYZ max;
+    getMinMax3D( *cloud_source, min, max );
+    pcl::PassThrough<PointXYZ> passer;
+    passer.setInputCloud( cloud_source );
+    passer.setFilterFieldName( "y" );
+    passer.setFilterLimits( ( max.y - abs(y) ) , ( max.y ) );
+    passer.pcl::Filter<PointXYZ>::filter( *cloud_source );
+
+    for ( int i = 0; i < cloud_source->size(); i++)
+    {
+        cloud_sum->points[i] = cloud_source->points[i];
+    }
+    for ( int i = 0; i < cloud_target->size(); i++)
+    {
+        cloud_sum->points[i+cloud_source->size()-1] = cloud_target->points[i];
+    }
+
+    saveFile( file_name, cloud_sum );
+}
+
 main( int argc, char **argv ) 
 {   
     // Variable to store the estimated TF.
@@ -353,7 +379,7 @@ main( int argc, char **argv )
     straight_vec(2) = 1;
 
     // sensor shifting values:
-    float x, z = 0;
+    float x, z = 0.0;
     float y = 121.47;
 
     // create pointer valids for source and target clouds, with all other variable dependencies.
@@ -371,7 +397,7 @@ main( int argc, char **argv )
     pcl::PointCloud<pcl::PrincipalCurvatures>::Ptr target_curves ( new pcl::PointCloud<PrincipalCurvatures> );
     pcl::IndicesPtr target_ind ( new std::vector <int> );
 
-    pcl::PointCloud<pcl::PointXYZ>::Ptr sum_cloud ( new pcl::PointCloud<pcl::PointXYZ> );
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_sum ( new pcl::PointCloud<pcl::PointXYZ> );
 
     // load source and target files.
     cout << "Loading pcd files...\n";
@@ -439,37 +465,16 @@ main( int argc, char **argv )
         pcl::registration::TransformationValidationEuclidean<pcl::PointXYZ, pcl::PointXYZ> valid;
         valid.setMaxRange( 10 );
         float conf_score = valid.validateTransformation( nss_overlap_source, nss_overlap_target, tf );
-        cout << "Confidence score: " << conf_score << endl; // the clouds seemed to be merged when the confidence score readched 0.2
+        cout << "Confidence score: " << conf_score << endl;
     } 
-
-    int total_size = cloud_source->size() + cloud_target->size();
-    sum_cloud->resize( total_size );
-
-    pcl::PointXYZ min;
-    pcl::PointXYZ max;
-    getMinMax3D( *cloud_source, min, max );
-    pcl::PassThrough<PointXYZ> passer;
-    passer.setInputCloud( cloud_source );
-    passer.setFilterFieldName( "y" );
-    passer.setFilterLimits( ( max.y - abs(y) ) , ( max.y ) );
-    passer.pcl::Filter<PointXYZ>::filter( *cloud_source );
-
-    for ( int i = 0; i < cloud_source->size(); i++)
+    
+    if ( argc > 3 )
     {
-        sum_cloud->points[i] = cloud_source->points[i];
-    }
-    for ( int i = 0; i < cloud_target->size(); i++)
-    {
-        sum_cloud->points[i+cloud_source->size()-1] = cloud_target->points[i];
-    }
-
-    if (argc > 3) 
-    { 
         string file_name = argv[3];
-        saveFile( file_name, sum_cloud );
+        saveCombined( cloud_source, cloud_target, cloud_sum, file_name, y );
     }
 
-    cloudsViewer( cloud_source, sum_cloud );
+    cloudsViewer( cloud_source, cloud_target );
 
     return 0;
 }
