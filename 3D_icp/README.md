@@ -5,18 +5,25 @@ The algorithm utilizes the Point Cloud Library to align two input PointClouds us
 The functions chosen are used for:
 
 1) Loading the “.pcd” files and removing any NaN points.
-2) Initial aligning both clouds. Including shifting, cropping, and position. (This is done in order to have the overlapping areas of both scans on top of each other)
-3) Finding the points normals and downsampling clouds using normal-space-sampling. (This method is chosen since it gives higher points concentration near edges and engravings, which is helpful when dealing with mostly flat surfaces)
-4) Finding the downsampled normals and the correspondences between the two PointClouds. (This is important since the clouds have different numbers of points)
-5) Estimate the transfer function that aligns the clouds using the Singular-Value-Decomposition matrix factorization method. 
+2) Defining key values from the inputted robot positions.
+3) Initial aligning both clouds. Including shifting, cropping, and position. (This is done in order to have only the overlapping areas in hand)
+4) Finding the points normals and downsampling clouds using normal-space-sampling. (This method is chosen since it gives higher points concentration near edges and engravings, which is helpful in eliminating points of straight, unhelpful areas)
+5) Finding the normal-shooting correspondences between the two PointClouds. (This ensures not having any correspondences between straight and curved areas)
+6) Estimating the aligning transfer function using the Singular-Value-Decomposition matrix factorization method. 
 Note: Steps 3-5 are applied to the overlapped area to minimize computational effort and process time.
-6) Apply the transfer function on the original source cloud, and view it along with the target cloud to confirm the results.
+7) Applying the transfer function on the original and downsampled source clouds.
+8) Iterating steps 5-7 20 times using different parameters. (keeping in mind that the inital gap between source and target is reduced)
+9) Optional: Combining the now-aligned target and source clouds into one single cloud and saving it in a file. (Depending if there was a resultant cloud file name inputted)
 
 - Running Instructions:
 After downloading the 3D_icp directory, follow these steps:
-1) Run the cmake command with the source path set to where the cmake file is, and the build path set to out/build.
+1) Run the cmake command with the source path set to where the cmake file is, and the build path set to out/build. (adjust the path to find the pcl-1.12 in cmakelists.txt if needed)
 2) Add the 2 “.pcd” files to be aligned to the out/build directory, or use the example files provided.
-3) Call the executable using Terminal with specifying the names of the 2 “.pcd” files to be aligned. (Example: ./diy_icp pack1.pcd pack2.pcd).
+3) Call the executable using Terminal with specifying the names of the 2 “.pcd” files to be aligned, the desired registeration direction, x and y values of the scans, and optionally the name of the file to save the resultant sum cloud. 
+- (x-dir Example: ./diy_icp pack1.pcd pack2.pcd x x0_target x1_target x0_source x1_source pack12.pcd),
+- (y-dir Example: ./diy_icp pack1.pcd pack2.pcd y y0_target y1_target y0_source y1_source pack12.pcd),
+- (xy-dir Example: ./diy_icp pack1.pcd pack2.pcd xy x0_target y0_target x1_target y1_target x0_source y0_source      x1_source y1_source pack12.pcd)
+- (yx-dir Example: ./diy_icp pack1.pcd pack2.pcd yx x0_target y0_target x1_target y1_target x0_source y0_source      x1_source y1_source pack12.pcd)
 
 **Functions Definition:**
 
@@ -25,11 +32,8 @@ Loads a .pcd file into a point cloud and prints out a feedback string on whether
 The function uses the loadPolygonFile and then stores the data from the mesh into the cloud object. Lastly, it removes any NaN points from the cloud.
 
 _**initAlign:**_
-This function applies the required initial alignment by ICP and crops the point clouds into two chunks in order to fasten processing by ‘focusing’ on the overlapped regions of the clouds.
-The source cloud is shifted by 1 on the z-axis in order to have a clear initial distance to work with.
-Both clouds are then cropped on the x-axis using PassThrough to result in only the overlapped regions (overlap-source, -target).
-The source clouds (original & overlap) are lastly shifted by the value of the sensor displacement.
-In order to shift the clouds accurately, it is planned to get the sensor displacement value later through other means, for example, through trackers or through robot arm odometry information.
+This function aligns the two clouds based on the inputted position values and then crops the overlapped regions of the clouds for faster processing.
+Both clouds are cropped depending on the specified direction using PassThrough resulting in the new clouds "overlap-source" and "overlap-target".
 
 _**normalSpaceSample**_:
 Downsampling the point clouds (i.e overlapped regions) is a crucial step to achieving optimal processing effort and time. Normal-Space-Sampling is a method that creates a _number of samples_ by randomly picking a point from _bins_ that contain multiple points.  
@@ -80,13 +84,19 @@ Additionally, a space-partitioning data structure (_kd-tree object_) is essentia
 The search area can be identified with one of 2 methods, namely, _KSearch_ and _RadiusSearch_.
 They cannot be used at the same time.
 
-_**filterByAngle**_:
-This function compares the normal vectors of the points with the surface normal vector of the cloud (currently a vector pointing straight in the z-direction) by calculating the angle between them. Therefore, allowing the identification of edges and curved areas in the point cloud. This comes in handy when aligning the clouds in the x-direction since only the curved areas are of significance. 
-
 //**TOOLS:**
 
 _**findTF**_:
 This function uses the Singular-Value Decomposition factorization to return a transfer function that estimates the rigid transformation needed to minimize the distance between the calculated correspondences of the two point-clouds. The distance here is minimized by means of translational and/or rotational motion. 
 
 _**cloudsViewer**_:
-This is the visualizing function that is called whenever we want to view the clouds. It also views the surface normal vector specified in the filterByAngle, as well as the correspondences calculated in each step. The source cloud is viewed in green and the target cloud in red.
+This is the visualizing function that is called whenever we want to view the clouds. It also views the point normals, as well as the correspondences calculated in each step. The source cloud is viewed in green and the target cloud in red. Note: An overlap function is also available that views only 2 clouds.
+
+_**saveFile**_:
+Saves the specified cloud into a file with the specified name in .pcd format.
+
+_**combineClouds**_:
+combines the input source and target clouds into a new sum cloud. It also takes in the position object of each cloud as well as the direction to take the overlapped areas in consideration.
+
+_**nullCloud**_:
+It is used to shift the 3D minimum point of the specified cloud to (0, 0, 0).
