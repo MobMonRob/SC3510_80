@@ -15,7 +15,7 @@ Note: Steps 3-5 are applied to the overlapped area to minimize computational eff
 8) Iterating steps 5-7 20 times using different parameters. (keeping in mind that the inital gap between source and target is reduced)
 9) Optional: Combining the now-aligned target and source clouds into one single cloud and saving it in a file. (Depending if there was a resultant cloud file name inputted)
 
-- Running Instructions:
+**Running Instructions:**
 After downloading the 3D_icp directory, follow these steps:
 1) Run the cmake command with the source path set to where the cmake file is, and the build path set to out/build. (adjust the path to find the pcl-1.12 in cmakelists.txt if needed)
 2) Add the 2 “.pcd” files to be aligned to the out/build directory, or use the example files provided.
