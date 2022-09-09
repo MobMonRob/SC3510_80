@@ -19,11 +19,10 @@ Note: Steps 3-5 are applied to the overlapped area to minimize computational eff
 After downloading the 3D_icp directory, follow these steps:
 1) Run the cmake command with the source path set to where the cmake file is, and the build path set to out/build. (adjust the path to find the pcl-1.12 in cmakelists.txt if needed)
 2) Add the 2 “.pcd” files to be aligned to the out/build directory, or use the example files provided.
-3) Call the executable using Terminal with specifying the names of the 2 “.pcd” files to be aligned, the desired registeration direction, x and y values of the scans, and optionally the name of the file to save the resultant sum cloud. 
+3) Call the executable using Terminal with specifying the names of the 2 “.pcd” files to be aligned, the desired registeration direction (x, y, or xy), x and y values of the scans, and optionally the name of the file to save the resultant sum cloud. 
 - (x-dir Example: ./diy_icp pack1.pcd pack2.pcd x x0_target x1_target x0_source x1_source pack12.pcd),
 - (y-dir Example: ./diy_icp pack1.pcd pack2.pcd y y0_target y1_target y0_source y1_source pack12.pcd),
 - (xy-dir Example: ./diy_icp pack1.pcd pack2.pcd xy x0_target y0_target x1_target y1_target x0_source y0_source      x1_source y1_source pack12.pcd)
-- (yx-dir Example: ./diy_icp pack1.pcd pack2.pcd yx x0_target y0_target x1_target y1_target x0_source y0_source      x1_source y1_source pack12.pcd)
 
 **Functions Definition:**
 
