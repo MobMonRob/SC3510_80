@@ -92,7 +92,7 @@ void initAlign( pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud_source, pcl::PointClo
     cout << "source (min), (max): " << smin << ", " << smax << endl;
     cout << "target (min), (max): " << tmin << ", " << tmax << endl;
     
-    // clouds cropping
+    // clouds cropping (for optimal cropping results, make sure that the overlapping dimensions do not exceed 1/3 the source cloud on each direction)
     if( dir == "y" )
     {
         if( source->y0 > target->y0 )
