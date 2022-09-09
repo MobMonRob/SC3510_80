@@ -7,10 +7,11 @@
 #include <pcl/io/vtk_lib_io.h>
 #include <pcl/common/common.h>
 #include <pcl/filters/filter.h>
+#include <pcl/filters/crop_box.h>
 #include <pcl/common/distances.h>
 #include <pcl/registration/icp.h>
-#include <pcl/features/normal_3d.h>
 #include <pcl/impl/point_types.hpp>
+#include <pcl/features/normal_3d.h>
 #include <pcl/filters/passthrough.h>
 #include <pcl/filters/normal_space.h>
 #include <pcl/filters/extract_indices.h>
@@ -81,7 +82,7 @@ void initAlign( pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud_source, pcl::PointClo
     //cloudsViewer( cloud_source, cloud_target );
 
     // calculating extreme points of the clouds after matching the sensor's position
-    pcl::PointXYZ tmin;
+    pcl::PointXYZ tmin;    
     pcl::PointXYZ tmax;
     getMinMax3D( *cloud_target, tmin, tmax );
     pcl::PointXYZ smin;
@@ -178,26 +179,13 @@ void initAlign( pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud_source, pcl::PointClo
             passer.filter( *overlap_source );
         }
     }
-    else if( dir == "yx")
-    {
-            // crop the relative segment of the target cloud
-            pcl::PassThrough<PointXYZ> passer;
-            passer.setInputCloud( cloud_target );
-            passer.setFilterFieldName( "y" );
-            passer.setFilterLimits( smin.y , smax.y );
-            passer.filter( *overlap_target );
-            // limit the x-area to match the source's
-            passer.setInputCloud( overlap_target );
-            passer.setFilterFieldName( "x" );
-            passer.setFilterLimits( smin.x , smax.x );  
-            passer.filter( *overlap_target );
-            // maintain the source cloud
-            copyPointCloud( *cloud_source, *overlap_source );
-    }
+
     else if( dir == "xy")
     {
             // limit the x-area to match the source's
             pcl::PassThrough<PointXYZ> passer;
+            Eigen::Vector4f sminv;
+            Eigen::Vector4f smaxv;
             passer.setInputCloud( cloud_target );
             passer.setFilterFieldName( "x" );
             passer.setFilterLimits( smin.x, smax.x );
@@ -207,8 +195,37 @@ void initAlign( pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud_source, pcl::PointClo
             passer.setFilterFieldName( "y" );
             passer.setFilterLimits( smin.y , smax.y );  
             passer.filter( *overlap_target );
-            // maintain the source cloud
-            copyPointCloud( *cloud_source, *overlap_source );
+            // crop out the non-overlapping box from source cloud
+            if ( abs(source->xc-tmin.x) > abs(source->xc-tmax.x) ) // source is on the right
+            {        
+                sminv[0] = smin.x+abs(smax.x-smin.x)/3;
+                smaxv[0] = smax.x;
+            }
+            else // source is on the left
+            {        
+                sminv[0] = smin.x;
+                smaxv[0] = smax.x-abs(smax.x-smin.x)/3;
+            }
+            if ( source->y0 > target->y0 ) // source is above
+            {
+                sminv[1] = smin.y+abs(smax.y-smin.y)/3;
+                smaxv[1] = smax.y;
+            }
+            else // source is under
+            {
+                sminv[1] = smin.y;
+                smaxv[1] = smax.y-abs(smax.y-smin.y)/3;
+            }
+            sminv[2] = smin.z;
+            sminv[3] = 1.0;
+            smaxv[2] = smax.z;
+            smaxv[3] = 1.0;
+            pcl::CropBox<PointXYZ> cb;
+            cb.setInputCloud( cloud_source );
+            cb.setNegative( true );
+            cb.setMin( sminv );
+            cb.setMax( smaxv );
+            cb.filter( *overlap_source );
 
     }
 }
@@ -546,94 +563,6 @@ void combineClouds( pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud_source, pcl::Poin
             passer.setInputCloud( cloud_target );           
             passer.setFilterFieldName( "y" );
             passer.setFilterLimits( (smax.y-10) , tmax.y );
-            passer.filter( *cloud_target );
-        }
-
-        //saving
-        int total_size = cloud_source->size() + cloud_target->size() + cloud_target_rest->size();
-        cloud_sum->resize( total_size );
-        
-        for ( int i = 0; i < cloud_target->size(); i++)
-        {
-            cloud_sum->points[i] = cloud_target->points[i];
-        }
-        for ( int i = 0; i < cloud_source->size(); i++)
-        {
-            cloud_sum->points[i+cloud_target->size()] = cloud_source->points[i];
-        }
-        for ( int i = 0; i < cloud_target_rest->size(); i++)
-        {
-            cloud_sum->points[i+cloud_target->size()+cloud_source->size()] = cloud_target_rest->points[i];
-        }
-    }
-
-    else if( dir == "yx" ) {
-        //cropping on y-direction
-        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_target_rest ( new pcl::PointCloud<pcl::PointXYZ> ); // point cloud
-        if (source->y0 < target->y0) //source is under
-        {
-            cout << "yx - down -";
-            //relative source's x-segment
-            passer.setFilterFieldName( "y" );
-            passer.setFilterLimits( smin.y , (smax.y-10) );
-            passer.filter( *cloud_source );
-            //non-overlapped target segment
-            passer.setInputCloud( cloud_target );
-            passer.setFilterFieldName( "y" );
-            passer.setFilterLimits( (smax.y-10) , tmax.y );
-            passer.filter( *cloud_target_rest );
-            //overlapped target's y-segment
-            passer.setInputCloud( cloud_target );
-            passer.setFilterFieldName( "y" );
-            passer.setFilterLimits( tmin.y , smax.y-10 );
-            passer.filter( *cloud_target );
-        }
-        else //source is above
-        {
-            //relative source's y-segment
-            cout << "yx - up -";
-            passer.setFilterFieldName( "y" );
-            passer.setFilterLimits( (smin.y+10) , smax.y );
-            passer.filter( *cloud_source );
-            //non-overlapped target segment
-            passer.setInputCloud( cloud_target );
-            passer.setFilterFieldName( "y" );
-            passer.setFilterLimits( tmin.y , (smin.y+10) );
-            passer.filter( *cloud_target_rest );
-            //overlapped target's y-segment
-            passer.setInputCloud( cloud_target );
-            passer.setFilterFieldName( "y" );
-            passer.setFilterLimits( (smin.y+10) , tmax.y );
-            passer.filter( *cloud_target );
-        }
-
-        //cropping on x-direction
-        if (abs(smin.x-tmin.x) > abs(smax.x-tmax.x)) //source in on the right 
-        {
-            cout << "right" << endl;
-            //relative source's x-segment
-            passer.setInputCloud( cloud_source );   
-            passer.setFilterFieldName( "x" );
-            passer.setFilterLimits( (smin.x+10) , smax.x);
-            passer.filter( *cloud_source );
-            //relative target's x-segment
-            passer.setInputCloud( cloud_target );           
-            passer.setFilterFieldName( "x" );
-            passer.setFilterLimits( tmin.x , (smin.x+10) );
-            passer.filter( *cloud_target );
-        }
-        else //source is to the left
-        {
-            //relative source's x-segment
-            cout << "left" << endl;
-            passer.setInputCloud( cloud_source );   
-            passer.setFilterFieldName( "x" );
-            passer.setFilterLimits( smin.x , (smax.x-10) );
-            passer.filter( *cloud_source );
-            //relative target's x-segment
-            passer.setInputCloud( cloud_target );           
-            passer.setFilterFieldName( "x" );
-            passer.setFilterLimits( (smax.x-10) , tmax.x );
             passer.filter( *cloud_target );
         }
 
