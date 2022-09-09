@@ -654,7 +654,7 @@ main( int argc, char **argv )
     
     if(dir == "x") { target->xc = (stof(argv[4])+stof(argv[5]))/2; source->xc = (stof(argv[6])+stof(argv[7]))/2; }
     else if(dir == "y") { target->y0 = stof(argv[4]); target->y1 = stof(argv[5]); source->y0 = stof(argv[6]); source->y1 = stof(argv[7]); }
-    else if(dir == "xy" || dir == "yx") { target->xc = (stof(argv[4])+stof(argv[6]))/2; target->y0 = stof(argv[5]); target->y1 = stof(argv[7]);
+    else if(dir == "xy") { target->xc = (stof(argv[4])+stof(argv[6]))/2; target->y0 = stof(argv[5]); target->y1 = stof(argv[7]);
                            source->xc = (stof(argv[8])+stof(argv[10]))/2; source->y0 = stof(argv[9]); source->y1 = stof(argv[11]);  }
     else { cout << "Direction is invalid." << endl; return 0; }
 
