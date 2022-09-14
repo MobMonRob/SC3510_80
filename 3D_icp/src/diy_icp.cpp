@@ -30,10 +30,10 @@ using namespace pcl;
 
 struct Positions {
     float xc = 0.0; // x_center 
-    float x0 = 0.0;
-    float x1 = 0.0;
     float y0 = 0.0;
     float y1 = 0.0;
+    float z0 = 0.0;
+    float z1 = 0.0;
 };
 void cloudsViewer(PointCloud<PointXYZ>::Ptr &cloud1, PointCloud<PointXYZ>::Ptr &cloud2);
 
@@ -70,16 +70,20 @@ void initAlign( pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud_source, pcl::PointClo
 
     float x_dist = source->xc - target->xc;
     float y_dist = source->y0 - target->y0;
+    float z_dist = source->z0 - target->z0;
+
+    cout << "sz0 = " << source->z0;
+    cout << " and tz0 = " << target->z0 << endl;
 
     tf << 1, 0, 0, x_dist,
           0, 1, 0, y_dist,
-          0, 0, 1, 0,
+          0, 0, 1, z_dist,
           0, 0, 0, 1
     ;
     cout << "the cloud transformation function is: " << endl << tf << endl;
     transformPointCloud( *cloud_source, *cloud_source, tf );
     // view the clouds after position alignment -optional-
-    //cloudsViewer( cloud_source, cloud_target );
+    cloudsViewer( cloud_source, cloud_target );
 
     // calculating extreme points of the clouds after matching the sensor's position
     pcl::PointXYZ tmin;    
@@ -180,7 +184,7 @@ void initAlign( pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud_source, pcl::PointClo
         }
     }
 
-    else if( dir == "xy")
+    else if( dir == "xy" || dir == "xyz" )
     {
             // limit the x-area to match the source's
             pcl::PassThrough<PointXYZ> passer;
@@ -590,14 +594,12 @@ void nullCloud( pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud )
     Eigen::Matrix4f tf;
     pcl::PointXYZ min;
     pcl::PointXYZ max;
-    float cx (0.0); 
-    float cy (0.0);
 
     // shift the cloud minimums to 0.
     getMinMax3D( *cloud, min, max );
     tf << 1, 0, 0, -min.x,
           0, 1, 0, -min.y,
-          0, 0, 1, 0,
+          0, 0, 1, -min.z,
           0, 0, 0, 1
     ;
     transformPointCloud( *cloud, *cloud, tf );
@@ -650,12 +652,12 @@ main( int argc, char **argv )
 
     // Defining key values: 
     string dir = argv[3];
-    
-    
     if(dir == "x") { target->xc = (stof(argv[4])+stof(argv[5]))/2; source->xc = (stof(argv[6])+stof(argv[7]))/2; }
     else if(dir == "y") { target->y0 = stof(argv[4]); target->y1 = stof(argv[5]); source->y0 = stof(argv[6]); source->y1 = stof(argv[7]); }
     else if(dir == "xy") { target->xc = (stof(argv[4])+stof(argv[6]))/2; target->y0 = stof(argv[5]); target->y1 = stof(argv[7]);
                            source->xc = (stof(argv[8])+stof(argv[10]))/2; source->y0 = stof(argv[9]); source->y1 = stof(argv[11]);  }
+    else if(dir == "xyz") { target->xc = (stof(argv[4])+stof(argv[7]))/2; target->y0 = stof(argv[5]); target->y1 = stof(argv[8]); target->z0 = stof(argv[6]); target->z1 = stof(argv[9]);
+                           source->xc = (stof(argv[10])+stof(argv[13]))/2; source->y0 = stof(argv[11]); source->y1 = stof(argv[14]); source->z0 = stof(argv[12]); source->z1 = stof(argv[15]); }
     else { cout << "Direction is invalid." << endl; return 0; }
 
     // Initial aligning:
@@ -663,7 +665,7 @@ main( int argc, char **argv )
     nullCloud( cloud_target );
     nullCloud( cloud_source );
     // view the original input clouds after moving origins to 0 -optional-
-    //cloudsViewer( cloud_source, cloud_target );
+    cloudsViewer( cloud_source, cloud_target );
     // crop and pre-align point clouds
     initAlign( cloud_source, cloud_target, overlap_source, overlap_target, dir, target, source );
     // view the resultant overlap clouds -optional-
@@ -691,14 +693,14 @@ main( int argc, char **argv )
     // estimate the transformation matrix
     tf = findTF( nss_overlap_source, nss_overlap_target, corr_list_out );
     // view downsampled overlap clouds before the initial transformation -optional-
-    //cout << "Clouds before initial - icp" << endl;
-    //cloudsViewer( nss_overlap_source, nss_overlap_target, source_normals, target_normals, corr_list_out );
+    cout << "Clouds before initial - icp" << endl;
+    cloudsViewer( nss_overlap_source, nss_overlap_target, source_normals, target_normals, corr_list_out );
     // apply the matrix on the source clouds
     transformPointCloud( *nss_overlap_source, *nss_overlap_source, tf );
     transformPointCloud( *cloud_source, *cloud_source, tf );
     // view downsampled overlap clouds after the initial transformation -optional-
-    //cout << "Clouds after initial - icp" << endl;
-    //cloudsViewer( nss_overlap_source, nss_overlap_target );
+    cout << "Clouds after initial - icp" << endl;
+    cloudsViewer( nss_overlap_source, nss_overlap_target );
     
     // Iterating ICP until a convergence criteria is satisfied:
     bool conv = false;
@@ -710,8 +712,9 @@ main( int argc, char **argv )
         findNormalCorrespondences( nss_overlap_source, source_normals, nss_overlap_target, target_normals, corr_list_out );
         normalCorrRejector( corr_list_out, corr_list, source_normals, target_normals, rej_ids, 5.0f );
         one2oneRejector( corr_list, corr_list );
-        distanceRejector( corr_list, corr_list, 2 );
+        distanceRejector( corr_list, corr_list, 5 );
 
+        cloudsViewer( nss_overlap_source, nss_overlap_target, source_normals, target_normals, corr_list );
         // estimate TF 
         tf = findTF( nss_overlap_source, nss_overlap_target, corr_list );
         
@@ -726,7 +729,7 @@ main( int argc, char **argv )
         cout << "Confidence score: " << conf_score << endl;
 
         pcl::registration::DefaultConvergenceCriteria<float> converge ( i, tf, *corr_list );
-        converge.setTranslationThreshold( 0.0001 );
+        converge.setTranslationThreshold( 0.0005 );
         converge.setRotationThreshold( std::cos( pcl::deg2rad( 3.0f ) ));
         if ( converge.hasConverged() == true )
             break;  
