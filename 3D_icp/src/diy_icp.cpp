@@ -387,15 +387,6 @@ void cloudsViewer( pointCloud::Ptr &cloud_source,
     viewer->addPointCloudNormals<point,normal>( cloud_target, target_normals, 10, 0.2, "target" );
     Eigen::Vector4f centroid;
     compute3DCentroid( *cloud_source, centroid );
-    point p1;
-    p1.x = centroid[0];
-    p1.y = centroid[1];
-    p1.z = centroid[2];
-    point p2;
-    p2.x = centroid[0];
-    p2.y = centroid[1];
-    p2.z = 10;
-    viewer->addArrow(p1, p2, 0, 100, 100);
     viewer->spin();
 }
 
