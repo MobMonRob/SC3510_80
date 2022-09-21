@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
 
 project(diy_icp)
 
-find_package(PCL 1.2 REQUIRED)
+find_package(PCL 1.12.1 REQUIRED PATHS /usr/local/include/pcl-1.12)
 
 include_directories(${PCL_INCLUDE_DIRS})
 link_directories(${PCL_LIBRARY_DIRS})
