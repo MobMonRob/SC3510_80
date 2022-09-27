@@ -1,3 +1,27 @@
+**How to build:**
+1) Preparation of the point cloud library
+The [point cloud library](https://pointclouds.org/) is used but its prebuild ready to use versions do not fit the needs of this project, because they do not contain all needed algorithms. In the pcl documentation there is a tutorial [Fitting trimmed B-splines to unordered point clouds](https://pcl.readthedocs.io/projects/tutorials/en/latest/bspline_fitting.html). In its sub chapter "PCL installation settings" there is explained how to enable the NURMBS and B-splinses modules.
+
+Our code is tested with pcl library version 1.12.1. Newer versions should also work.
+
+So, clone an appropriate version of the point cloud library:
+
+```
+git clone https://github.com/PointCloudLibrary/pcl
+
+```
+
+
+3) Clone the repository and navigate into the main folder of the repository
+
+4) preparation of make
+
+```sh
+   mkdir build
+   cd build
+   cmake-gui
+```  
+
 **Using ICP to align PointClouds:**
 
 - Functionality:
@@ -18,14 +42,15 @@ Note: Steps 3-5 are applied to the overlapped area to minimize computational eff
 **Running Instructions:**
 After downloading the 3D_icp directory, follow these steps:
 1) Run the cmake command with the source path set to where the cmake file is, and the build path set to out/build. (adjust the path to find the pcl-1.12 in CMakeLists.txt if needed)
-2) Add the first 2 “.pcd” files to be aligned to the out/build directory, or use the example files provided.
-3) Call the executable using Terminal with specifying the names of the 2 “.pcd” files to be aligned, the desired registeration direction (x, y, or xy), x and y values of the scans, and optionally the name of the file to save the resultant sum cloud. 
-- (x-dir Example: ./diy_icp pack1.pcd pack2.pcd x x0_target x1_target x0_source x1_source pack12.pcd)
-- (y-dir Example: ./diy_icp pack1.pcd pack2.pcd y y0_target y1_target y0_source y1_source pack12.pcd)
-- (xy-dir Example: ./diy_icp pack1.pcd pack2.pcd xy x0_target y0_target x1_target y1_target x0_source y0_source x1_source y1_source pack12.pcd)
-- (xyz-dir Example: ./diy_icp pack1.pcd pack2.pcd xyz x0_target y0_target z0_target x1_target y1_target z1_target x0_source y0_source z0_target x1_source y1_source z1_source pack12.pcd)
+2) Add the “.pcd” files to be aligned to the build directory. Some example files are provided in this repository.
+3) In the terminal, call the executable followed by the “.pcd” files to be aligned, then the ".csv" positions file and lastly the name of the file ".pcd" to save the resultant registered cloud. 
 
-**Functions Definition:**
+_Example:_ ./diy_icp linear_scan_1.pcd linear_scan_2.pcd linear_scan_3.pcd linear_scan_positions.csv linear_scan_123.pcd
+
+**Functions and Class Definition:**
+
+_**Positions:**_
+This class is used to create objects that hold the position values of the current source and target clouds.
 
 **//TOOLS:**
 
@@ -51,13 +76,24 @@ _**findTF**_:
 This function uses the Singular-Value Decomposition factorization to return a transfer function that estimates the rigid transformation needed to minimize the distance between the calculated correspondences of the two point-clouds. The distance here is minimized by means of translational and/or rotational motion. 
 
 _**cloudsViewer**_:
-This is the visualizing function that is called whenever we want to view the clouds. It also views the point normals, as well as the correspondences calculated in each step. The source cloud is viewed in green and the target cloud in red. Note: An overlap function is also available that views only 2 clouds.
+This is the visualizing function that is called whenever we want to view the clouds. It also views the point normals, as well as the correspondences calculated in each step. The source cloud is viewed in green and the target cloud in red. 
+Note: 2 overloads are also available. One to views 2 clouds without correspondences, and another to view 1 cloud only.
 
 _**saveFile**_:
 Saves the specified cloud into a file with the specified name in .pcd format.
 
+_**readCSV**_:
+Extracts the positions inside the ".csv" file and reutrns them as a vector of vectors of position pairs (axis_name/type, value).
+
+_**setPositions**_:
+Saves the individual positions extracted from the scan positions vector into a _**Positions**_ object.
+Note: an overlaod function is available that saves indivdual positions extracted from the minimum and maximum values of a point cloud.
+
+_**getDirection**_:
+ddecides the direction of scanning based on the extrimum values of the source and target clouds.
+
 _**combineClouds**_:
-combines the input source and target clouds into a new sum cloud. It also takes in the position object of each cloud as well as the direction to take the overlapped areas in consideration.
+Combines the input source and target clouds into a new sum cloud. It also takes in the position object of each cloud as well as the direction to take the overlapped areas in consideration.
 
 _**nullCloud**_:
 It is used to shift the 3D minimum point of the specified cloud to (0, 0, 0).
