@@ -328,6 +328,7 @@ void saveFile( string file_name, pointCloud::Ptr &ds_cloud )
 
 vector<vector<pair<string, float>>> readCSV( string filename )
 {
+    cout << "Reading the positions values..." << endl;
     ifstream stream(filename);
     string current_line;
     int index = 0;
@@ -745,13 +746,13 @@ main( int argc, char **argv )
           0, 0, 1, 0,
           0, 0, 0, 1
     ;
-    // straight vector pointing in the z-direction used to compare with points normal angles.
+    // Straight vector pointing in the z-direction used to compare with points normal angles.
     Eigen::Vector3f straight_vec;
     straight_vec(0) = 0;
     straight_vec(1) = 0;
     straight_vec(2) = 10;
 
-    // create pointer valids for source and target clouds, with all other variable dependencies.
+    // Create pointer valids for source and target clouds, with all other variable dependencies.
     pointCloud::Ptr source_cloud ( new pointCloud ); // point cloud
     pointCloud::Ptr source_overlap ( new pointCloud ); // overlapped region
     normalCloud::Ptr source_normals ( new normalCloud ); // cloud normals
@@ -766,14 +767,14 @@ main( int argc, char **argv )
     pcl::IndicesPtr target_ind ( new std::vector <int> );
     Positions *target = new Positions();
 
-    pointCloud::Ptr cloud_sum ( new pointCloud );
+    pointCloud::Ptr cloud_sum ( new pointCloud ); // registered cloud
 
-    pcl::CorrespondencesPtr corr_list ( new pcl::Correspondences );  
-    pcl::CorrespondencesPtr corr_list_out ( new pcl::Correspondences );
-    pcl::IndicesPtr rej_ids ( new vector <int> );
-    vector<pointCloud::Ptr, Eigen::aligned_allocator<pointCloud::Ptr>> clouds_vec;
-    vector<vector<pair<string, float>>> scans_pos_vec;
-    string dir;
+    pcl::CorrespondencesPtr corr_list ( new pcl::Correspondences ); // correspondences list
+    pcl::CorrespondencesPtr corr_list_out ( new pcl::Correspondences ); // parallel correspondences list
+    pcl::IndicesPtr rej_ids ( new vector <int> ); // rejected indices list
+    vector<pointCloud::Ptr, Eigen::aligned_allocator<pointCloud::Ptr>> clouds_vec; // point clouds vector
+    vector<vector<pair<string, float>>> scans_pos_vec; // clouds positions vector
+    string dir; // scanning direction
 
     // Loading source and target files:
     cout << "Loading pcd files...\n";
@@ -783,16 +784,16 @@ main( int argc, char **argv )
         loadFile ( argv[i], *cloud );
         clouds_vec.push_back(cloud);
     }
-    cout << clouds_vec.size() << " separate clouds were loaded for registration." << endl;
+    cout << clouds_vec.size() << " clouds were loaded for registration." << endl;
 
-    // reading the csv file, based on the passed arguments
+    // Reading the csv file, based on the passed arguments
     scans_pos_vec = readCSV( argv[argc-2] );
 
-    // assigning the initial target position values
+    // Assigning the initial target position values
     target = setPositions( scans_pos_vec, 0 );
     target_cloud = clouds_vec[0];
 
-    // registring two clouds at a time, iterating through the clouds_vec
+    // Registring two clouds at a time, iterating through the clouds_vec
     for(int i=1; i < clouds_vec.size(); i++) {
         source_cloud->clear();
         // Note: each scan has 2 positions vector, initial and final, 
@@ -801,58 +802,62 @@ main( int argc, char **argv )
         source_cloud = clouds_vec[i];
         source = setPositions( scans_pos_vec, i*2 );
 
-        // shift the point clouds to the robot's coordinate system
+        // Shift the point clouds to the robot's coordinate system
+        cout << "Shifting the clouds to the origin of the coordinates system..." << endl;
         nullCloud( target_cloud );
         nullCloud( source_cloud );
 
-        // view the original input clouds after moving origins to 0 -optional-
-        //cloudsViewer( source_cloud, target_cloud );
+        // View the original input clouds after moving origins to 0 -optional-
+        cout << "Viewing the clouds after shifting. Press 'q' to continue." << endl;
+        cloudsViewer( source_cloud, target_cloud );
 
-        // pre-align the clouds based on the robot's positions
+        // Pre-align the clouds based on the robot's positions
         preAlign( source_cloud, target_cloud, source, target );
 
         dir = getDirection( source_cloud, target_cloud );
 
-        // view the original input clouds after initial alignment -optional-
-        //cloudsViewer( source_cloud, target_cloud );
+        // View the original input clouds after initial alignment -optional-
+        cout << "Viewing the pre-aligned clouds. Press 'q' to continue." << endl;
+        cloudsViewer( source_cloud, target_cloud );
 
-        // crop the overlapped areas of the point clouds
+        // Crop the overlapped areas of the point clouds
         cropClouds( source_cloud, target_cloud, source_overlap, target_overlap, dir, target, source );
 
-        // view the resultant overlap clouds -optional-
-        //cloudsViewer( source_overlap, target_overlap );
+        // View the resultant overlap clouds -optional-
+        cout << "Viewing the overlap regions of the clouds. Press 'q' to continue." << endl;
+        cloudsViewer( source_overlap, target_overlap );
 
-        // downsampling the original clouds:
+        // Downsampling the original clouds:
         findNormals ( source_overlap, source_normals );
         findNormals ( target_overlap, target_normals );
         normalSpaceSample ( source_overlap, nss_source_overlap, source_normals );
         normalSpaceSample ( target_overlap, nss_target_overlap, target_normals );
         
-        // calculating new normals of downsampled clouds
+        // Calculating new normals of downsampled clouds
         findNormals ( nss_source_overlap, source_normals );
         findNormals ( nss_target_overlap, target_normals );
         copyPointCloud( *nss_source_overlap, *source_normals );
         copyPointCloud( *nss_target_overlap, *target_normals );
 
-        // estimating the correspondeces using normal shooting method:
+        // Estimating the correspondeces using normal shooting method:
         findNormalCorrespondences( nss_source_overlap, source_normals, nss_target_overlap, target_normals, corr_list, 8, 200);
         normalCorrRejector( corr_list, corr_list_out, source_normals, target_normals, rej_ids, 35.0f ); // normal-angle rejector is used to assure that only almost-vertical correspondences are considered. 
         one2oneRejector( corr_list_out, corr_list_out );
         
-        // view downsampled overlap clouds before the initial transformation -optional-
-        //cout << "Clouds before initial - icp" << endl;
-        //cloudsViewer( nss_source_overlap, nss_target_overlap, source_normals, target_normals, corr_list_out );
+        // View downsampled overlap clouds before the initial transformation -optional-
+        cout << "Viewing the clouds before initial ICP. Press 'q' to continue." << endl;
+        cloudsViewer( nss_source_overlap, nss_target_overlap, source_normals, target_normals, corr_list_out );
 
         // estimate and apply the matrix on the source clouds
         tf = findTF( nss_source_overlap, nss_target_overlap, corr_list_out );
         transformPointCloud( *nss_source_overlap, *nss_source_overlap, tf );
         transformPointCloud( *source_cloud, *source_cloud, tf );
 
-        // view downsampled overlap clouds after the initial transformation -optional-
-        //cout << "Clouds after initial - icp" << endl;
+        // View downsampled overlap clouds after the initial transformation -optional-
+        //cout << "Viewing the clouds after initial ICP. Press 'q' to continue." << endl;s
         //cloudsViewer( nss_source_overlap, nss_target_overlap );
 
-        // filtering out points on straight areas
+        // Filtering out points on straight areas
         source_ind = filterByAngle(source_normals, straight_vec, 10, "higher");
         target_ind = filterByAngle(target_normals, straight_vec, 10, "higher");
 
@@ -861,30 +866,32 @@ main( int argc, char **argv )
         int loop = 1;
         while (!conv)
         {
-            // estimate correspondences and then apply rejectors
+            // Estimate correspondences and then apply rejectors
             cout << "\nloop #" << loop << endl;
             findIndNormalCorrespondences( nss_source_overlap, source_normals, nss_target_overlap, target_normals, corr_list_out, source_ind, target_ind );
             normalCorrRejector( corr_list_out, corr_list, source_normals, target_normals, rej_ids, 35.0f );
             one2oneRejector( corr_list, corr_list );
 
-            // view clouds iteratively before each transform -optional-
+            // View clouds iteratively before each transform -optional-
             //cloudsViewer( nss_source_overlap, nss_target_overlap, source_normals, target_normals, corr_list );
             
-            // estimate TF and transform clouds
+            // Estimate TF and transform clouds
             tf = findTF( nss_source_overlap, nss_target_overlap, corr_list );
             transformPointCloud( *nss_source_overlap, *nss_source_overlap, tf );
             transformPointCloud( *source_cloud, *source_cloud, tf );
 
+            // Checking the convergence criteria, by comparing the last two TFs.
             pcl::registration::DefaultConvergenceCriteria<float> converge ( i, tf, *corr_list );
-            converge.setTranslationThreshold( 0.000005 );
+            converge.setTranslationThreshold( 0.000005 ); 
             converge.setRotationThreshold( cos( deg2rad( 0.5f ) ));
             if ( converge.hasConverged() == true )
                 break;
             loop++;
         } 
         
-        // view the detail-alignment result -optional-
-        //cloudsViewer( source_cloud, target_cloud );
+        // View the detail-alignment result -optional-
+        cout << "Viewing the clouds after details-alignment loop. Press 'q' to continue." << endl;
+        cloudsViewer( source_cloud, target_cloud );
         
         // Iterating ICP until a convergence criteria is satisfied (aligning flat surfaces):
         conv = false;
@@ -897,7 +904,7 @@ main( int argc, char **argv )
             normalCorrRejector( corr_list_out, corr_list, source_normals, target_normals, rej_ids, 35.0f );
             one2oneRejector( corr_list, corr_list );
 
-            // view clouds iteratively before each transform -optional-
+            // View clouds iteratively before each transform -optional-
             //cloudsViewer( nss_source_overlap, nss_target_overlap, source_normals, target_normals, corr_list );
 
             // estimate TF and transform clouds
@@ -905,6 +912,7 @@ main( int argc, char **argv )
             transformPointCloud( *nss_source_overlap, *nss_source_overlap, tf );
             transformPointCloud( *source_cloud, *source_cloud, tf );
 
+            // Checking the convergence criteria, by comparing the last two TFs.
             pcl::registration::DefaultConvergenceCriteria<float> converge ( i, tf, *corr_list );
             converge.setTranslationThreshold( 0.000005 );
             converge.setRotationThreshold( cos( deg2rad( 0.5f ) ));
@@ -913,31 +921,31 @@ main( int argc, char **argv )
             loop++;
         }
 
-        // view the registration result -optional-
-        //cloudsViewer( source_cloud, target_cloud );
+        // View the registration result -optional-
+        cout << "Viewing the clouds after complete registration. Press 'q' to continue." << endl;
+        cloudsViewer( source_cloud, target_cloud );
 
-        // merge the clouds.
+        // Merging the clouds
         cloud_sum = combineClouds( source_cloud, target_cloud, dir, source, target );
 
-        // pass on the new target cloud data for the next loop
+        // Passing on the new target cloud data for the next loop
         target = setPositions( cloud_sum );
         target_cloud->clear();
         copyPointCloud( *cloud_sum, *target_cloud );
         cloud_sum->clear();
 
-        // view new merged cloud -optional-
-        //cloudsViewer( target_cloud );
+        // View the new merged cloud -optional-
+        cout << "Viewing the new merged cloud. Press 'q' to continue." << endl;
+        cloudsViewer( target_cloud );
     }
 
-    // view the entire final cloud
+    // View the entire final cloud
+    cout << "Viewing the final cloud. Press 'q' to save." << endl;
     cloudsViewer( target_cloud );
 
-    // save the final cloud if a file name is inputted as an argument
-    if(argc == clouds_vec.size()+3)
-    {
-        string file_name = argv[argc-1];
-        saveFile( file_name, target_cloud );
-    }
+    // Save the final cloud if a file name is inputted as an argument
+    string file_name = argv[argc-1];
+    saveFile( file_name, target_cloud );
 
     cout << "The program took " << time.toc() << " ms to run." << endl;
     return 0;
