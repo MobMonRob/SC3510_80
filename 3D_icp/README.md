@@ -28,16 +28,25 @@ git clone https://github.com/PointCloudLibrary/pcl
 The algorithm utilizes the Point Cloud Library to align two input PointClouds using ICP principles. The variants for the used functions are chosen with respect to the application of this project which is scanning a surface that is going to be grinded.
 The functions chosen are used for:
 
-1) Loading the “.pcd” files and removing any NaN points.
+1) Loading the “.pcd” files and removing any NaN points and storing them in a point clouds vector.
 2) Defining key values from the inputted robot positions.
 3) Initial aligning both clouds. Including shifting, cropping, and position. (This is done in order to process only the overlapping areas further)
 4) Finding the points normals and downsampling clouds using normal-space-sampling. (This method is chosen since it gives higher points concentration near edges and engravings, which is helpful in eliminating points of flat, unhelpful areas)
-5) Finding the normal-shooting correspondences between the two PointClouds. (This method works best with surfaces that are mostly flat)
-6) Estimating the aligning transfer function using the Singular-Value-Decomposition matrix factorization method. 
-Note: Steps 3-5 are applied to the overlapped area to minimize computational effort and process time.
-7) Applying the transfer function on the original and downsampled source clouds.
-8) Iterating steps 5-7 in 3 different loops using different parameters.
-9) Optional: Combining the now-aligned target and source clouds into one single cloud and saving it in a file. (Depending if there was a resultant cloud file name inputted)
+5) Initial registration: (sets up the clouds as close as possible for the next detail-registration process)
+   5.1) Finding the normal-shooting correspondences between the two PointClouds. (This method works best with surfaces that are mostly flat. The parameters are set for far-distaned correspondenes)
+   5.2) Rejecting undesired correspondences based on normal-angle difference and one-to-many behaviour. 
+6) Targeting the points that lie within curved areas, i.e grooves (details).
+7) Detail registration loop:
+   7.1) Finding the normal-shooting correspondences between the two PointClouds. (The parameters are set for close-distaned correspondenes, and operate on details only)
+   7.2) Rejecting undesired correspondences based on normal-angle difference and one-to-many behaviour.
+   7.3) Iterating the registration until a convergence criterium is met. (translation or rotation)
+8) Final surface registration loop:
+   8.1) Finding the normal-shooting correspondences between the two PointClouds. (The parameters are set for close-distaned correspondenes, and operate on all points)
+   8.2) Rejecting undesired correspondences based on normal-angle difference and one-to-many behaviour.
+   8.3) Iterating the registration until a convergence criterium is met. (translation or rotation)
+9) Combining the now-aligned target and source clouds into one cloud.
+10) Iterating 3-9 using the new merged cloud and the next one the vector until the point clouds vector is finished.
+11) Saving the total cloud of all the clouds combined in a pcd file.
 
 **Running Instructions:**
 After downloading the 3D_icp directory, follow these steps:
