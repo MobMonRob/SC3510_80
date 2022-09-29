@@ -35,19 +35,24 @@ The functions chosen are used for:
 5) Initial registration: (sets up the clouds as close as possible for the next detail-registration process)
 
    5.1) Finding the normal-shooting correspondences between the two PointClouds. (This method works best with surfaces that are mostly flat. The parameters are set for far-distaned correspondenes)
+   
    5.2) Rejecting undesired correspondences based on normal-angle difference and one-to-many behaviour. 
    
 6) Targeting the points that lie within curved areas, i.e grooves (details).
 
 8) Detail registration loop:
    8.1) Finding the normal-shooting correspondences between the two PointClouds. (The parameters are set for close-distaned correspondenes, and operate on details only)
+   
    8.2) Rejecting undesired correspondences based on normal-angle difference and one-to-many behaviour.
+   
    8.3) Iterating the registration until a convergence criterium is met. (translation or rotation)
    
 9) Final surface registration loop:
 
    9.1) Finding the normal-shooting correspondences between the two PointClouds. (The parameters are set for close-distaned correspondenes, and operate on all points)
+   
    9.2) Rejecting undesired correspondences based on normal-angle difference and one-to-many behaviour.
+   
    9.3) Iterating the registration until a convergence criterium is met. (translation or rotation)
    
 10) Combining the now-aligned target and source clouds into one cloud.
