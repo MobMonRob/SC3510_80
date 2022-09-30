@@ -89,7 +89,7 @@ Both clouds are cropped depending on the specified direction resulting in the ne
 _**normalSpaceSample**_:
 Downsampling the point clouds (i.e overlapped regions) is a crucial step to achieving optimal processing effort and time. Normal-Space-Sampling is a method that creates a _number of samples_ by randomly picking a point from _bins_ that contain multiple points.  
 
-- _setSample_: specifies the number of indices to be sampled.
+- _setSample_: specifies the relative resulting number of points. This values depends on the amount of details in, and the size of, the scan. The more details/larger the scan is the smaller the ratio can be, and vise versa. (recommended range: 1% - 0.2%)
 - _setSeed_: specifies the seed to be used by the random function that picks the points from the bins.
 - _setBins_: (x, y, z) set the number of bins (buckets) to be considered when picking the corresponding indices.
 
