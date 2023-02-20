@@ -6,7 +6,6 @@ For: DHBW - Karlsruhe
 */
 #include <cmath>
 #include <math.h>
-#include <stdlib.h>
 #include <iostream>
 #include <pcl/PolygonMesh.h>
 #include <pcl/console/time.h>
@@ -33,33 +32,14 @@ For: DHBW - Karlsruhe
 
 using namespace std;
 using namespace pcl;
-
+ 
 using point = PointXYZ;
 using normal = PointNormal;
 using pointCloud = PointCloud<point>;
 using normalCloud = PointCloud<normal>;
 
-struct Positions {
-    // translation values
-    float tx0 = 0.0;
-    float tx1 = 0.0;
-    float ty0 = 0.0;
-    float ty1 = 0.0;
-    float tz0 = 0.0;
-    float tz1 = 0.0;
-    // rotation values
-    float rx0 = 0.0;
-    float rx1 = 0.0;
-    float ry0 = 0.0;
-    float ry1 = 0.0;
-    float rz0 = 0.0;
-    float rz1 = 0.0;
-    float rw0 = 0.0;
-    float rw1 = 0.0;
-};
-
 // TOOLS
-void loadFile( const char* fileName, pointCloud &cloud ) 
+void loadFile (const char* fileName, pointCloud &cloud) 
 {
     // mech valid to store the cloud.
     pcl::PolygonMesh mesh;
@@ -82,32 +62,8 @@ void loadFile( const char* fileName, pointCloud &cloud )
     pcl::removeNaNFromPointCloud ( cloud, cloud, index );
 }
 
-void preAlign(pointCloud::Ptr &source_cloud, pointCloud::Ptr &target_cloud, Positions* &source, Positions* &target)
-{
-    cout << "Pre-aligning clouds..." << endl;
-
-    // constructing the new corresponding pose transfer function
-    Eigen::Matrix4f stf;
-    stf << 1, 0, 0, source->tx0,
-           0, 1, 0, source->ty0,
-           0, 0, 1, source->tz0,
-           0, 0, 0, 1
-    ;
-    cout << "the source cloud pre-aligning transformation function is: " << endl << stf << endl;
-    transformPointCloud( *source_cloud, *source_cloud, stf );
-
-    Eigen::Matrix4f ttf;
-    ttf << 1, 0, 0, target->tx0,
-           0, 1, 0, target->ty0,
-           0, 0, 1, target->tz0,
-           0, 0, 0, 1
-    ;
-    cout << "the target cloud pre-aligning transformation function is: " << endl << ttf << endl;
-    transformPointCloud( *target_cloud, *target_cloud, ttf );
-}
-
-void cropClouds( pointCloud::Ptr &source_cloud, pointCloud::Ptr &target_cloud,
-                pointCloud::Ptr &source_overlap, pointCloud::Ptr &target_overlap, string dir, Positions* &target, Positions* &source )
+void cropClouds (pointCloud::Ptr &source_cloud, pointCloud::Ptr &target_cloud,
+                 pointCloud::Ptr &source_overlap, pointCloud::Ptr &target_overlap, string dir)
 {
     cout << "cropping clouds..." << endl;
     // calculating extreme points of the clouds after matching the sensor's position
@@ -121,7 +77,7 @@ void cropClouds( pointCloud::Ptr &source_cloud, pointCloud::Ptr &target_cloud,
     // clouds cropping (for optimal cropping results, make sure that the overlapping dimensions do not exceed 1/3 the source cloud on each direction)
     if( dir == "y" )
     {
-        if( source->ty0 > target->ty0 ) // if source is above target
+        if( smin.y > tmin.y ) // if source is above target
         {
             // cropping the top relative third of the target cloud
             pcl::PassThrough<point> passer;
@@ -152,7 +108,7 @@ void cropClouds( pointCloud::Ptr &source_cloud, pointCloud::Ptr &target_cloud,
             // limit the x-area to be the same as the source's, plus some tolerance area
             passer.setInputCloud( target_overlap );
             passer.setFilterFieldName("x");
-            passer.setFilterLimits( ( smin.x ) , ( smax.x ) ); // -10+10
+            passer.setFilterLimits( ( smin.x-50 ) , ( smax.x+50 ) );
             passer.filter( *target_overlap );
             getMinMax3D( *target_overlap, tmin, tmax );
             // crop the top third of the source cloud
@@ -164,7 +120,7 @@ void cropClouds( pointCloud::Ptr &source_cloud, pointCloud::Ptr &target_cloud,
     }
     else if( dir == "x" )
     {
-        if( source->tx0 > target->tx0 ) // if source is to the right of target
+        if( smin.x > tmin.x ) // if source is to the right of target
         {
             // cropping the right relative third of the target cloud
             pcl::PassThrough<point> passer;
@@ -175,7 +131,7 @@ void cropClouds( pointCloud::Ptr &source_cloud, pointCloud::Ptr &target_cloud,
             // limiting the x-area to be the same as the source's, plus some tolerance area
             passer.setInputCloud( target_overlap );
             passer.setFilterFieldName("y");
-            passer.setFilterLimits( ( smin.y ) , ( smax.y ) ); // -10+10
+            passer.setFilterLimits( ( smin.y ) , ( smax.y ) );
             passer.filter( *target_overlap );
             getMinMax3D( *target_overlap, tmin, tmax );
             // cropping the bottom third of the source cloud
@@ -195,7 +151,7 @@ void cropClouds( pointCloud::Ptr &source_cloud, pointCloud::Ptr &target_cloud,
             // limit the y-area to match the source's, plus some tolerance area
             passer.setInputCloud( target_overlap );
             passer.setFilterFieldName("y");
-            passer.setFilterLimits( ( smin.y ) , ( smax.y ) ); // -10+10
+            passer.setFilterLimits( ( smin.y ) , ( smax.y ) ); 
             passer.filter( *target_overlap );
             getMinMax3D( *target_overlap, tmin, tmax );
             // crop the top third of the source cloud
@@ -214,12 +170,12 @@ void cropClouds( pointCloud::Ptr &source_cloud, pointCloud::Ptr &target_cloud,
             Eigen::Vector4f smaxv;
             passer.setInputCloud( target_cloud );
             passer.setFilterFieldName( "x" );
-            passer.setFilterLimits( smin.x, smax.x ); // -10+10
+            passer.setFilterLimits( smin.x, smax.x );
             passer.filter( *target_overlap );
             // limit the y-area to match the source's, plus some tolerance area
             passer.setInputCloud( target_overlap );
             passer.setFilterFieldName( "y" );
-            passer.setFilterLimits( smin.y , smax.y ); // -10+10
+            passer.setFilterLimits( smin.y , smax.y );
             passer.filter( *target_overlap );
             // crop out the non-overlapping box from source cloud
             if ( 30 > abs(smax.x-tmax.x) ) // source is on the right
@@ -256,60 +212,52 @@ void cropClouds( pointCloud::Ptr &source_cloud, pointCloud::Ptr &target_cloud,
     }
 }
 
-void normalSpaceSample( pointCloud::Ptr &source_cloud,
-                        pointCloud::Ptr &nss_source_overlap,
-                        normalCloud::Ptr &source_normals, float ds_factor = 0.002 ) 
+void normalSpaceSample (pointCloud::Ptr &cloud,
+                        pointCloud::Ptr &ds_cloud,
+                        normalCloud::Ptr &normals, float ds_factor = 0.002) 
 {
     // create the nss valid, pass the cloud, the normals, and save the filtered cloud.
     pcl::NormalSpaceSampling<point,normal> nss;
-    nss.setSample( source_cloud->size() * ds_factor ); // default: 0.2% of original points
+    nss.setSample( cloud->size() * ds_factor ); // default: 0.2% of original points
     nss.setBins( 5, 5, 1000 ); // number of different bins on each axis. (each bin gets filled with points of a specific normal vlaue)
     nss.setSeed( 8 );
-    nss.setInputCloud( source_cloud );
-    nss.setNormals( source_normals );
-    nss.pcl::Filter<point>::filter( *nss_source_overlap );
-    pcl::console::print ( pcl::console::L_INFO, "Source cloud was downsampled from %d points to %d points\n", (int)source_cloud.get()->size(), (int)nss_source_overlap.get()->size() );
+    nss.setInputCloud( cloud );
+    nss.setNormals( normals );
+    nss.pcl::Filter<point>::filter( *ds_cloud );
+    pcl::console::print ( pcl::console::L_INFO, "Source cloud was downsampled from %d points to %d points\n", (int)cloud.get()->size(), (int)ds_cloud.get()->size() );
 }
 
-Eigen::Matrix4f findTF( pointCloud::Ptr &nss_source_overlap, pointCloud::Ptr &nss_target_overlap, pcl::CorrespondencesPtr &corr_list )
+Eigen::Matrix4f findTF (pointCloud::Ptr &source_cloud, pointCloud::Ptr &target_cloud, pcl::CorrespondencesPtr &corr_list)
 {
     Eigen::Matrix4f tf;
     pcl::registration::TransformationEstimationSVD<point, point> te;
-    te.estimateRigidTransformation( *nss_source_overlap, *nss_target_overlap, *corr_list, tf );
+    te.estimateRigidTransformation( *source_cloud, *target_cloud, *corr_list, tf );
     cout << "The approximated transfer function is: " << endl << tf << endl;
     return tf;
 }
 
-void cloudsViewer( pointCloud::Ptr &source_cloud, 
+void cloudsViewer (pointCloud::Ptr &source_cloud, 
                    pointCloud::Ptr &target_cloud, 
                    normalCloud::Ptr source_normals, 
                    normalCloud::Ptr target_normals,
-                   pcl::CorrespondencesPtr &corr_list ) // two clouds with their correspondences and normals
+                   pcl::CorrespondencesPtr &corr_list,
+                   bool view_normals = false) // two clouds with their correspondences and normals
 {
     pcl::visualization::PCLVisualizer::Ptr viewer ( new pcl::visualization::PCLVisualizer ("3D Viewer") );
     pcl::visualization::PointCloudColorHandlerCustom<point> source_color ( source_cloud, 0, 255, 0 );
     pcl::visualization::PointCloudColorHandlerCustom<point> target_color ( target_cloud, 255, 0, 0 );
     viewer->addPointCloud<point>( source_cloud, source_color, "first" );
     viewer->addPointCloud( target_cloud, target_color, "second", 0 );
-    //viewer->addCorrespondences<point>( source_cloud, target_cloud, *corr_list ); // views connecting lines betwenn each point pair.
-    viewer->addPointCloudNormals<point,normal>( source_cloud, source_normals, 1, 0.9, "source" );
-    viewer->addPointCloudNormals<point,normal>( target_cloud, target_normals, 1, 0.9, "target" );
-    Eigen::Vector4f centroid;
-    compute3DCentroid( *source_cloud, centroid );
-    pcl::PointXYZ arrow_tip;
-    pcl::PointXYZ arrow_base;
-    arrow_tip.x = centroid[0];
-    arrow_tip.y = centroid[1];
-    arrow_tip.z = 150;
-    arrow_base.x = centroid[0];
-    arrow_base.y = centroid[1];
-    arrow_base.z = centroid[2]; 
-    viewer->addLine(arrow_tip, arrow_base, 0, 255, 120);
+    viewer->addCorrespondences<point>( source_cloud, target_cloud, *corr_list ); // views connecting lines betwenn each point pair.
+    if (view_normals == true) {
+        viewer->addPointCloudNormals<point,normal>( source_cloud, source_normals, 1, 0.9, "source" );
+        viewer->addPointCloudNormals<point,normal>( target_cloud, target_normals, 1, 0.9, "target" );
+    }
     viewer->spin();
 }
 
-void cloudsViewer( pointCloud::Ptr &source_cloud, 
-                   pointCloud::Ptr &target_cloud ) // Overload, two clouds without correspondences nor normals
+void cloudsViewer (pointCloud::Ptr &source_cloud, 
+                   pointCloud::Ptr &target_cloud) // Overload, two clouds without correspondences nor normals
 {
     pcl::visualization::PCLVisualizer::Ptr viewer ( new pcl::visualization::PCLVisualizer ("3D Viewer") );
     pcl::visualization::PointCloudColorHandlerCustom<point> source_color ( source_cloud, 0, 255, 0 );
@@ -319,7 +267,7 @@ void cloudsViewer( pointCloud::Ptr &source_cloud,
     viewer->spin();
 }
 
-void cloudsViewer( pointCloud::Ptr &cloud ) // Overload, one cloud without correspondences nor normals
+void cloudsViewer (pointCloud::Ptr &cloud) // Overload, one cloud without correspondences nor normals
 {
     pcl::visualization::PCLVisualizer::Ptr viewer ( new pcl::visualization::PCLVisualizer ("3D Viewer") );
     pcl::visualization::PointCloudColorHandlerCustom<point> source_color ( cloud, 0, 255, 0 );
@@ -327,107 +275,23 @@ void cloudsViewer( pointCloud::Ptr &cloud ) // Overload, one cloud without corre
     viewer->spin();
 }
 
-void saveFile( string file_name, pointCloud::Ptr &ds_cloud )
+void saveFile (string file_name, pointCloud::Ptr &cloud)
 {
     cout << "Saving cloud..." << endl;
     int counter = 1;
     ofstream out(file_name);
     out << "# .PCD v.7 - Point Cloud Data file\n" << "VERSION .7\n" << "FIELDS x y z\n" << "SIZE 4 4 4\n" << "TYPE F F F\n" << "COUNT 1 1 1\n"
-    << "WIDTH 1\n" << "HEIGHT " << ds_cloud->points.size() << "\nVIEWPOINT 0 0 0 1 0 0 0\n" << "POINTS " << (ds_cloud->points.size()) << "\nDATA ascii\n";
-    for(int i = 0; i < ds_cloud->points.size(); i++) {
-        out << ds_cloud->points[i].x << " " 
-        << ds_cloud->points[i].y << " "
-        << ds_cloud->points[i].z << endl;
+    << "WIDTH 1\n" << "HEIGHT " << cloud->points.size() << "\nVIEWPOINT 0 0 0 1 0 0 0\n" << "POINTS " << (cloud->points.size()) << "\nDATA ascii\n";
+    for(int i = 0; i < cloud->points.size(); i++) {
+        out << cloud->points[i].x << " " 
+        << cloud->points[i].y << " "
+        << cloud->points[i].z << endl;
     }
     out.close();
     cout << "The clouds were merged and saved in " << file_name << " successfully." << endl;
 }
 
-vector<vector<pair<string, float>>> readCSV( string filename )
-{
-    cout << "Reading the positions values..." << endl;
-    ifstream stream(filename);
-    string current_line;
-    int index = 0;
-    char delimit = ',';
-    string label;
-    string position;
-    stringstream labels_line;
-    stringstream positions_line;
-    vector<string> labels_list;
-    vector<pair<string, float>> positions_vector;
-    vector<vector<pair<string, float>>> scans_vector;
-
-    while(getline(stream, current_line))
-    {       
-        if(index == 0) 
-        {
-            labels_line.str(current_line);
-            while(getline(labels_line, label, delimit))
-            {   
-                labels_list.push_back(label);
-            }
-        }
-        else 
-        {   
-            positions_line.str(current_line);
-            int label_i = 0;
-            while(getline(positions_line, position, delimit))
-            {
-                if(label_i <= 2)
-                  positions_vector.push_back(make_pair(labels_list.at(label_i), (stof(position)*1000))); // appending the linear positions * 1000 mm/m
-                else
-                  positions_vector.push_back(make_pair(labels_list.at(label_i), (stof(position)))); // appending the rotation values
-                label_i++;             
-            }
-            positions_line.clear();   
-            scans_vector.push_back(positions_vector);
-            positions_vector.clear();
-        }
-        index++;
-    }
-    return scans_vector;
-}
-
-Positions* setPositions( vector<vector<pair<string, float>>> scans_pos_vec, int index ) // sets the positions based on the provided csv
-{
-    Positions *cloud_pos = new Positions();
-    cloud_pos->tx0 = scans_pos_vec[index][0].second;
-    cloud_pos->tx1 = scans_pos_vec[index+1][0].second;
-    cloud_pos->ty0 = scans_pos_vec[index][1].second;
-    cloud_pos->ty1 = scans_pos_vec[index+1][1].second;
-    cloud_pos->tz0 = scans_pos_vec[index][2].second;
-    cloud_pos->tz1 = scans_pos_vec[index+1][2].second;
-    cloud_pos->rx0 = scans_pos_vec[index][3].second;
-    cloud_pos->rx1 = scans_pos_vec[index+1][3].second;
-    cloud_pos->ry0 = scans_pos_vec[index][4].second;
-    cloud_pos->ry1 = scans_pos_vec[index+1][4].second;
-    cloud_pos->rz0 = scans_pos_vec[index][5].second;
-    cloud_pos->rz1 = scans_pos_vec[index+1][5].second;
-    cloud_pos->rw0 = scans_pos_vec[index][6].second;
-    cloud_pos->rw1 = scans_pos_vec[index+1][6].second;
-
-    return cloud_pos;
-}
-
-Positions* setPositions( pointCloud::Ptr &cloud ) // sets the positions based on the cloud's min and max values 
-{
-    point min;
-    point max;
-    getMinMax3D( *cloud, min, max );
-
-    Positions *cloud_pos = new Positions();
-    cloud_pos->tx0 = min.x;
-    cloud_pos->tx1 = max.x;
-    cloud_pos->ty0 = min.y;
-    cloud_pos->ty1 = max.y;
-    cloud_pos->tz0 = min.z;
-    cloud_pos->tz1 = max.z;
-
-    return cloud_pos;
-}
-
-string getDirection( pointCloud::Ptr &source_cloud, pointCloud::Ptr &target_cloud ) // detects the scannig diretion based on the clouds' position information
+string getDirection (pointCloud::Ptr &source_cloud, pointCloud::Ptr &target_cloud) // detects the scanning direction based on the clouds' position information
 {
     cout << "Detecting scanning direction..." << endl;
     string dir;
@@ -443,7 +307,7 @@ string getDirection( pointCloud::Ptr &source_cloud, pointCloud::Ptr &target_clou
              (abs(tmin.y - smin.y) > 30 && abs(tmax.y - smax.y) > 30) )  
     dir = "y"; 
     
-    else  
+    else
     dir = "xy";
 
     //print out the scan direction -optional-
@@ -451,8 +315,7 @@ string getDirection( pointCloud::Ptr &source_cloud, pointCloud::Ptr &target_clou
     return dir;
 }
 
-pointCloud::Ptr combineCloudsPass( pointCloud::Ptr &source_cloud, pointCloud::Ptr &target_cloud, 
-                               string dir, Positions* &source, Positions* &target ) // uses passer filters
+pointCloud::Ptr combineClouds (pointCloud::Ptr &source_cloud, pointCloud::Ptr &target_cloud, string dir) // uses passer filters to fuse two clouds
 {
     pointCloud::Ptr cloud_sum ( new pointCloud );
     cout << "Combining clouds..." << endl;
@@ -615,26 +478,10 @@ pointCloud::Ptr combineCloudsPass( pointCloud::Ptr &source_cloud, pointCloud::Pt
     return cloud_sum;
 }
 
-void nullCloud( pointCloud::Ptr &cloud )
-{
-    Eigen::Matrix4f tf;
-    point min;
-    point max;
-
-    // shift the cloud minimums to 0.
-    getMinMax3D( *cloud, min, max );
-    tf << 1, 0, 0, -min.x,
-          0, 1, 0, -min.y,
-          0, 0, 1, -min.z,
-          0, 0, 0, 1
-    ;
-    transformPointCloud( *cloud, *cloud, tf );
-}
-
 // MATCHERS
-void findNormalCorrespondences( pointCloud::Ptr &source_cloud, normalCloud::Ptr &source_normals,
+void findNormalCorrespondences (pointCloud::Ptr &source_cloud, normalCloud::Ptr &source_normals,
                                 pointCloud::Ptr &target_cloud, normalCloud::Ptr &target_normals,
-                                pcl::CorrespondencesPtr &corr, int kfactor = 8, float dist = 10 )
+                                pcl::CorrespondencesPtr &corr, int kfactor = 8, float dist = 10)
 {
     pcl::registration::CorrespondenceEstimationNormalShooting<point, point, normal> est;
     est.setInputSource( source_cloud );
@@ -649,11 +496,11 @@ void findNormalCorrespondences( pointCloud::Ptr &source_cloud, normalCloud::Ptr 
     pcl::console::print ( pcl::console::L_INFO, "There were %d normal correspondences found.\n", corr->size() );
 }
 
-void findIndNormalCorrespondences( pointCloud::Ptr &source_cloud, normalCloud::Ptr &source_normals,
+void findIndNormalCorrespondences (pointCloud::Ptr &source_cloud, normalCloud::Ptr &source_normals,
                                    pointCloud::Ptr &target_cloud, normalCloud::Ptr &target_normals,
                                    pcl::CorrespondencesPtr &corr,
                                    pcl::IndicesPtr &source_ind, pcl::IndicesPtr &target_ind,
-                                   int kfactor = 8, float dist = 10 )
+                                   int kfactor = 8, float dist = 10)
 {
     pcl::registration::CorrespondenceEstimationNormalShooting<point, point, normal> est;
     est.setInputSource( source_cloud );
@@ -671,12 +518,12 @@ void findIndNormalCorrespondences( pointCloud::Ptr &source_cloud, normalCloud::P
 }
 
 // REJECTORS
-void normalCorrRejector( pcl::CorrespondencesPtr &corr_list, pcl::CorrespondencesPtr &corr_out,
+void normalCorrRejector (pcl::CorrespondencesPtr &corr_list, pcl::CorrespondencesPtr &corr_out,
                          normalCloud::Ptr &source_normals, normalCloud::Ptr &target_normals,
-                         pcl::IndicesPtr rej_ids, float angle_diff )
+                         pcl::IndicesPtr rej_ids, float angle_diff)
 {
     pcl::registration::CorrespondenceRejectorSurfaceNormal::Ptr rejector ( new pcl::registration::CorrespondenceRejectorSurfaceNormal );
-    rejector->setThreshold( std::cos (  pcl::deg2rad(angle_diff)  ) );
+    rejector->setThreshold( std::cos (pcl::deg2rad(angle_diff)));
     rejector->initializeDataContainer<normal, normal> ( );
     rejector->setInputSource <normal> ( source_normals );
     rejector->setInputTarget <normal> ( target_normals );
@@ -688,8 +535,8 @@ void normalCorrRejector( pcl::CorrespondencesPtr &corr_list, pcl::Correspondence
     pcl::console::print ( pcl::console::L_INFO, "Correspondences are now down to %d after rejecting normal outliers.\n", corr_out->size() );
 }
 
-void one2oneRejector( pcl::CorrespondencesPtr &corr_list,
-                      pcl::CorrespondencesPtr &corr_out )
+void one2oneRejector (pcl::CorrespondencesPtr &corr_list,
+                      pcl::CorrespondencesPtr &corr_out)
 {
     pcl::registration::CorrespondenceRejectorOneToOne rejector;
     rejector.setInputCorrespondences(corr_list);
@@ -700,22 +547,22 @@ void one2oneRejector( pcl::CorrespondencesPtr &corr_list,
 }
 
 // FEATURE EXTRACTORS
-void findNormals( pointCloud::Ptr &source_cloud, normalCloud::Ptr &source_normals )
+void findNormals (pointCloud::Ptr &cloud, normalCloud::Ptr &normals)
 {
     // create the ne and kdtree valids, pass the cloud, set search radius, and save the found normals.
     Eigen::Vector4f centroid;
     pcl::NormalEstimation<point, normal> ne;
     pcl::search::KdTree<point>::Ptr kdtree ( new pcl::search::KdTree<point> () );
-    compute3DCentroid( *source_cloud, centroid );
+    compute3DCentroid( *cloud, centroid );
     ne.setViewPoint( centroid[0], centroid[1], 10000.0f );
     ne.setKSearch( 8 );
-    ne.setInputCloud( source_cloud );
+    ne.setInputCloud( cloud );
     ne.setSearchMethod( kdtree );
-    ne.compute( *source_normals );
-    pcl::console::print ( pcl::console::L_INFO, "Source normals calculated, %d normals were found.\n", (int)source_normals->size() );
+    ne.compute( *normals );
+    pcl::console::print ( pcl::console::L_INFO, "Source normals calculated, %d normals were found.\n", (int)normals->size() );
 }
 
-pcl::IndicesPtr filterByAngle( normalCloud::Ptr &cloud_normals, const Eigen::Vector3f requiredDirection, float AngleDeg, string LH )
+pcl::IndicesPtr filterByAngle (normalCloud::Ptr &cloud_normals, const Eigen::Vector3f refVector, float threshAngle, string LH)
 {
     pcl::IndicesPtr indices ( new std::vector <int> );
     float angle, lenSq1, dot;
@@ -725,25 +572,24 @@ pcl::IndicesPtr filterByAngle( normalCloud::Ptr &cloud_normals, const Eigen::Vec
         dot = cloud_normals->points[i].normal_z;
         lenSq1 = sqrt(pow(cloud_normals->points[i].normal_x, 2.0f) + pow(cloud_normals->points[i].normal_y, 2.0f) + pow(cloud_normals->points[i].normal_z, 2.0f));
         angle = pcl::rad2deg( acos(dot/lenSq1) );
-
-        if( LH == "lower") 
+        if( LH == "higher") 
         { 
-            if ( angle <= AngleDeg ) 
+            if ( angle >= threshAngle ) 
                 indices->push_back(i);
         }
 
-        else if( LH == "higher") 
+        else if( LH == "lower") 
         { 
-            if ( angle >= AngleDeg ) 
+            if ( angle <= threshAngle ) 
                 indices->push_back(i);
         }            
     }
 
-    cout << indices->size() << " from " << cloud_normals->size() << " point normals are " << LH << " than " << AngleDeg << "°." << endl;
+    cout << endl << indices->size() << " from " << cloud_normals->size() << " point normals are " << LH << " than " << threshAngle << "°." << endl;
     return indices;
 }  
 
-main( int argc, char **argv ) 
+main (int argc, char **argv) 
 {   
     pcl::console::TicToc time;
     time.tic();
@@ -761,114 +607,95 @@ main( int argc, char **argv )
     straight_vec(2) = 10;
 
     // Create pointer valids for source and target clouds, with all other variable dependencies.
-    pointCloud::Ptr source_cloud ( new pointCloud ); // point cloud
-    pointCloud::Ptr source_overlap ( new pointCloud ); // overlapped region
-    normalCloud::Ptr source_normals ( new normalCloud ); // cloud normals
-    pointCloud::Ptr nss_source_overlap ( new pointCloud ); // sampled cloud
-    pcl::IndicesPtr source_ind ( new std::vector <int> ); // point indices of curvy points
-    Positions *source = new Positions(); // object for storing key values of the cloud
+    pointCloud::Ptr source_cloud (new pointCloud); // point cloud
+    pointCloud::Ptr source_overlap (new pointCloud); // overlapped region
+    normalCloud::Ptr source_normals (new normalCloud); // cloud normals
+    pointCloud::Ptr nss_source_overlap (new pointCloud); // sampled cloud
+    pcl::IndicesPtr source_ind (new std::vector <int>); // point indices of curvy points
 
-    pointCloud::Ptr target_cloud ( new pointCloud );
-    pointCloud::Ptr target_overlap ( new pointCloud );
-    normalCloud::Ptr target_normals ( new normalCloud );
-    pointCloud::Ptr nss_target_overlap ( new pointCloud );
-    pcl::IndicesPtr target_ind ( new std::vector <int> );
-    Positions *target = new Positions();
+    pointCloud::Ptr target_cloud (new pointCloud);
+    pointCloud::Ptr target_overlap (new pointCloud);
+    normalCloud::Ptr target_normals (new normalCloud);
+    pointCloud::Ptr nss_target_overlap (new pointCloud);
+    pcl::IndicesPtr target_ind (new std::vector <int>);
 
-    pointCloud::Ptr cloud_sum ( new pointCloud ); // registered cloud
+    pointCloud::Ptr cloud_sum (new pointCloud); // registered cloud
 
-    pcl::CorrespondencesPtr corr_list ( new pcl::Correspondences ); // correspondences list
-    pcl::CorrespondencesPtr corr_list_out ( new pcl::Correspondences ); // parallel correspondences list
-    pcl::IndicesPtr rej_ids ( new vector <int> ); // rejected indices list
+    pcl::CorrespondencesPtr corr_list (new pcl::Correspondences); // correspondences list
+    pcl::CorrespondencesPtr corr_list_out (new pcl::Correspondences); // parallel correspondences list
+    pcl::IndicesPtr rej_ids (new vector <int>); // rejected indices list
     vector<pointCloud::Ptr, Eigen::aligned_allocator<pointCloud::Ptr>> clouds_vec; // point clouds vector
     vector<vector<pair<string, float>>> scans_pos_vec; // clouds positions vector
     string dir; // scanning direction
 
     // Loading source and target files:
     cout << "Loading pcd files...\n";
-    for(int i=1; i <= argc-3; i++)
+    for (int i=1; i <= argc-2; i++)
     {
-        pointCloud::Ptr cloud ( new pointCloud );
-        loadFile ( argv[i], *cloud );
-        clouds_vec.push_back(cloud);
+        pointCloud::Ptr cloud (new pointCloud);
+        loadFile (argv[i], *cloud);
+        clouds_vec.push_back (cloud);
     }
     cout << clouds_vec.size() << " clouds were loaded for registration." << endl;
 
-    // Reading the csv file, based on the passed arguments
-    scans_pos_vec = readCSV( argv[argc-2] );
-
-    // Assigning the initial target position values
-    target = setPositions( scans_pos_vec, 0 );
+    // Assigning the initial target cloud
     target_cloud = clouds_vec[0];
 
     // Registring two clouds at a time, iterating through the clouds_vec
-    for(int i=1; i < clouds_vec.size(); i++) {
+    for (int i=1; i < clouds_vec.size(); i++) {
         source_cloud->clear();
         // Note: each scan has 2 positions vector, initial and final, 
         // thus len(scans_pos_vec) = 2*len(clouds_vec); explaining the i+=2.
         // Defining first key values:
         source_cloud = clouds_vec[i];
-        source = setPositions( scans_pos_vec, i*2 );
 
-        // Shift the point clouds to the robot's coordinate system
-        cout << "Shifting the clouds to the origin of the coordinates system..." << endl;
-        nullCloud( target_cloud );
-        nullCloud( source_cloud );
+        dir = getDirection (source_cloud, target_cloud);
 
-        // View the original input clouds after moving origins to 0 -optional-
-        //cout << "Viewing the clouds after shifting. Press 'q' to continue." << endl;
-        //cloudsViewer( source_cloud, target_cloud );
-
-        // Pre-align the clouds based on the robot's positions
-        preAlign( source_cloud, target_cloud, source, target );
-
-        dir = getDirection( source_cloud, target_cloud );
-
-        // View the original input clouds after initial alignment -optional-
-        //cout << "Viewing the pre-aligned clouds. Press 'q' to continue." << endl;
-        //cloudsViewer( source_cloud, target_cloud );
+        // View the original input clouds -optional-
+        cout << "Viewing the pre-aligned clouds. Press 'q' to continue." << endl;
+        cloudsViewer (source_cloud, target_cloud);
 
         // Crop the overlapped areas of the point clouds
-        cropClouds( source_cloud, target_cloud, source_overlap, target_overlap, dir, target, source );
+        cropClouds (source_cloud, target_cloud, source_overlap, target_overlap, dir);
 
         // View the resultant overlap clouds -optional-
-        //cout << "Viewing the overlap regions of the clouds. Press 'q' to continue." << endl;
-        //cloudsViewer( source_overlap, target_overlap );
+        cout << "Viewing the overlap regions of the clouds. Press 'q' to continue." << endl;
+        cloudsViewer (source_overlap, target_overlap);
 
         // Downsampling the original clouds:
-        findNormals ( source_overlap, source_normals );
-        findNormals ( target_overlap, target_normals );
-        normalSpaceSample ( source_overlap, nss_source_overlap, source_normals, 0.02 ); // The downsampling factor values depend on how much details are in 
-        normalSpaceSample ( target_overlap, nss_target_overlap, target_normals, 0.02 ); // the scans. The more details (grooves), the lower the ds_factor can be.
+        findNormals (source_overlap, source_normals);
+        findNormals (target_overlap, target_normals);
+        normalSpaceSample (source_overlap, nss_source_overlap, source_normals, 0.2); // The downsampling factor values depend on how much details are in 
+        normalSpaceSample (target_overlap, nss_target_overlap, target_normals, 0.2); // the scans. The more details (grooves), the lower the ds_factor can be.
         
         // Calculating new normals of the downsampled clouds
-        findNormals ( nss_source_overlap, source_normals );
-        findNormals ( nss_target_overlap, target_normals );
-        copyPointCloud( *nss_source_overlap, *source_normals );
-        copyPointCloud( *nss_target_overlap, *target_normals );
+        findNormals (nss_source_overlap, source_normals);
+        findNormals (nss_target_overlap, target_normals);
+        copyPointCloud (*nss_source_overlap, *source_normals);
+        copyPointCloud (*nss_target_overlap, *target_normals);
 
         // Estimating the correspondeces using normal shooting method:
-        findNormalCorrespondences( nss_source_overlap, source_normals, nss_target_overlap, target_normals, corr_list, 8, 200);
-        normalCorrRejector( corr_list, corr_list_out, source_normals, target_normals, rej_ids, 35.0f ); // normal-angle rejector is used to assure that only almost-vertical correspondences are considered. 
-        one2oneRejector( corr_list_out, corr_list_out );
+        findNormalCorrespondences (nss_source_overlap, source_normals, nss_target_overlap, target_normals, corr_list, 8, 200);
+        normalCorrRejector (corr_list, corr_list_out, source_normals, target_normals, rej_ids, 35.0f); // normal-angle rejector is used to assure that only almost-vertical correspondences are considered. 
+        one2oneRejector (corr_list_out, corr_list_out);
         
         // View downsampled overlap clouds before the initial transformation -optional-
-        //cout << "Viewing the clouds before initial ICP. Press 'q' to continue." << endl;
-        //cloudsViewer( nss_source_overlap, nss_target_overlap, source_normals, target_normals, corr_list_out );
+        cout << "Viewing the clouds before initial ICP. Press 'q' to continue." << endl;
+        cloudsViewer( nss_source_overlap, nss_target_overlap, source_normals, target_normals, corr_list_out );
 
         // estimate and apply the matrix on the source clouds
-        tf = findTF( nss_source_overlap, nss_target_overlap, corr_list_out );
-        transformPointCloud( *nss_source_overlap, *nss_source_overlap, tf );
-        transformPointCloud( *source_cloud, *source_cloud, tf );
+        tf = findTF (nss_source_overlap, nss_target_overlap, corr_list_out);
+        transformPointCloud (*nss_source_overlap, *nss_source_overlap, tf);
+        transformPointCloud (*source_cloud, *source_cloud, tf);
 
         // View downsampled overlap clouds after the initial transformation -optional-
-        //cout << "Viewing the clouds after initial ICP. Press 'q' to continue." << endl;
-        //cloudsViewer( source_cloud, target_cloud );
+        cout << "Viewing the clouds after initial ICP. Press 'q' to continue." << endl;
+        cloudsViewer (nss_source_overlap, nss_target_overlap);
 
         // Filtering out points on straight areas
-        source_ind = filterByAngle(source_normals, straight_vec, 10, "higher");
-        target_ind = filterByAngle(target_normals, straight_vec, 10, "higher");
-
+        source_ind = filterByAngle (source_normals, straight_vec, 45, "higher");
+        target_ind = filterByAngle (target_normals, straight_vec, 45, "higher");
+        
         // Iterate ICP until a convergence criteria is satisfied (aligning details)
         bool conv = false;
         int loop = 1;
@@ -876,32 +703,32 @@ main( int argc, char **argv )
         {
             // Estimate correspondences and then apply rejectors
             cout << "\nloop #" << loop << endl;
-            findIndNormalCorrespondences( nss_source_overlap, source_normals, nss_target_overlap, target_normals, corr_list_out, source_ind, target_ind, 8, 10 ); 
-            normalCorrRejector( corr_list_out, corr_list, source_normals, target_normals, rej_ids, 35.0f );
-            one2oneRejector( corr_list, corr_list );
-           // if (loop == 1)
-               // cloudsViewer( nss_source_overlap, nss_target_overlap, source_normals, target_normals, corr_list );
+            findIndNormalCorrespondences (nss_source_overlap, source_normals, nss_target_overlap, target_normals, corr_list_out, source_ind, target_ind, 8, 10); 
+            normalCorrRejector (corr_list_out, corr_list, source_normals, target_normals, rej_ids, 35.0f);
+            one2oneRejector (corr_list, corr_list);
 
+            if (loop == 1)
+                cloudsViewer(nss_source_overlap, nss_target_overlap, source_normals, target_normals, corr_list);
             // View clouds iteratively before each transform -optional-
             //cloudsViewer( nss_source_overlap, nss_target_overlap, source_normals, target_normals, corr_list );
             
             // Estimate TF and transform clouds
-            tf = findTF( nss_source_overlap, nss_target_overlap, corr_list );
-            transformPointCloud( *nss_source_overlap, *nss_source_overlap, tf );
-            transformPointCloud( *source_cloud, *source_cloud, tf );
+            tf = findTF (nss_source_overlap, nss_target_overlap, corr_list);
+            transformPointCloud (*nss_source_overlap, *nss_source_overlap, tf);
+            transformPointCloud (*source_cloud, *source_cloud, tf);
 
             // Checking the convergence criteria, by comparing the last two TFs.
-            pcl::registration::DefaultConvergenceCriteria<float> converge ( i, tf, *corr_list );
-            converge.setTranslationThreshold( 0.000005 ); 
-            converge.setRotationThreshold( cos( deg2rad( 0.5f ) ));
+            pcl::registration::DefaultConvergenceCriteria<float> converge (i, tf, *corr_list);
+            converge.setTranslationThreshold (0.000005); 
+            converge.setRotationThreshold (cos( deg2rad(0.5f)));
             if ( converge.hasConverged() == true )
                 break;
             loop++;
         } 
         
         // View the detail-alignment result -optional-
-        //cout << "Viewing the clouds after details-alignment loop. Press 'q' to continue." << endl;
-        //cloudsViewer( source_cloud, target_cloud );
+        cout << "Viewing the clouds after details-alignment loop. Press 'q' to continue." << endl;
+        cloudsViewer( nss_source_overlap, nss_target_overlap );
         
         // Iterating ICP until a convergence criteria is satisfied (aligning flat surfaces):
         conv = false;
@@ -910,9 +737,9 @@ main( int argc, char **argv )
         {
             // estimate correspondences and then apply rejectors
             cout << "\nloop #" << loop << endl;
-            findNormalCorrespondences( nss_source_overlap, source_normals, nss_target_overlap, target_normals, corr_list_out, 8, 2 );
-            normalCorrRejector( corr_list_out, corr_list, source_normals, target_normals, rej_ids, 35.0f );
-            one2oneRejector( corr_list, corr_list );
+            findNormalCorrespondences (nss_source_overlap, source_normals, nss_target_overlap, target_normals, corr_list_out, 8, 2);
+            normalCorrRejector (corr_list_out, corr_list, source_normals, target_normals, rej_ids, 35.0f);
+            one2oneRejector (corr_list, corr_list);
 
             // View clouds iteratively before each transform -optional-
             //cloudsViewer( nss_source_overlap, nss_target_overlap, source_normals, target_normals, corr_list );
@@ -923,29 +750,27 @@ main( int argc, char **argv )
             transformPointCloud( *source_cloud, *source_cloud, tf );
 
             // Checking the convergence criteria, by comparing the last two TFs.
-            pcl::registration::DefaultConvergenceCriteria<float> converge ( i, tf, *corr_list );
-            converge.setTranslationThreshold( 0.000005 );
-            converge.setRotationThreshold( cos( deg2rad( 0.5f ) ));
-            if ( converge.hasConverged() == true )
+            pcl::registration::DefaultConvergenceCriteria<float> converge (i, tf, *corr_list);
+            converge.setTranslationThreshold (0.000005);
+            converge.setRotationThreshold (cos( deg2rad( 0.5f )));
+            if (converge.hasConverged() == true)
                 break;
             loop++;
         }
 
         // View the registration result -optional-
-        //cout << "Viewing the clouds after complete registration. Press 'q' to continue." << endl;
-        //cloudsViewer( source_cloud, target_cloud );
-        source = setPositions(source_cloud);
-        target = setPositions(target_cloud);
+        cout << "Viewing the clouds after complete registration. Press 'q' to continue." << endl;
+        cloudsViewer (nss_source_overlap, nss_target_overlap);
+        cloudsViewer (source_cloud, target_cloud);
 
         // Merging the clouds
-        cloud_sum = combineCloudsPass( source_cloud, target_cloud, dir, source, target );
+        cloud_sum = combineClouds (source_cloud, target_cloud, dir);
         // View the new merged cloud -optional-
-        //cout << "Viewing the new merged cloud. Press 'q' to continue." << endl;
-        //cloudsViewer( cloud_sum );
+        cout << "Viewing the new merged cloud. Press 'q' to continue." << endl;
+        cloudsViewer (cloud_sum);
         // Passing on the new target cloud data for the next loop
-        target = setPositions( cloud_sum );
         target_cloud->clear();
-        copyPointCloud( *cloud_sum, *target_cloud );
+        copyPointCloud (*cloud_sum, *target_cloud);
         cloud_sum->clear();
         
     }
